@@ -145,6 +145,9 @@ function doPost(e) {
       case 'getAll':
         result = getAllRows(sheetName);
         break;
+      case 'sendEmail':
+        result = sendEmail(payload);
+        break;
       default:
         return jsonResponse({ 
           success: false, 
@@ -387,6 +390,58 @@ function jsonResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Envía un correo electrónico usando Gmail
+ * Requiere autorización de Gmail la primera vez
+ */
+function sendEmail(payload) {
+  try {
+    const { to, subject, body, html } = payload;
+    
+    if (!to || !subject) {
+      return { 
+        success: false, 
+        error: 'Faltan parámetros: to y subject son requeridos' 
+      };
+    }
+    
+    // Opciones del email
+    const options = {};
+    if (html) {
+      options.htmlBody = html;
+    }
+    
+    // Enviar el correo
+    GmailApp.sendEmail(to, subject, body || '', options);
+    
+    return { 
+      success: true, 
+      message: 'Email enviado correctamente',
+      to: to,
+      subject: subject
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error.toString() 
+    };
+  }
+}
+
+/**
+ * Función de prueba para envío de correo
+ * Ejecuta esta función desde el editor para autorizar Gmail
+ */
+function testSendEmail() {
+  const result = sendEmail({
+    to: 'tu-email@ejemplo.com', // Cambia por tu email para probar
+    subject: 'Prueba CEDI - Envío de correo',
+    body: 'Este es un correo de prueba del sistema CEDI.',
+    html: '<h1>Prueba CEDI</h1><p>Este es un correo de prueba del sistema CEDI.</p>'
+  });
+  Logger.log(JSON.stringify(result, null, 2));
 }
 
 /**
