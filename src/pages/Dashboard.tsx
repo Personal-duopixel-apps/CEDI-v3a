@@ -1,5 +1,7 @@
 import * as React from "react"
 import { motion } from "framer-motion"
+import { format, isToday, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   Package,
   Calendar,
@@ -10,11 +12,14 @@ import {
   CheckCircle2,
   ArrowRight,
   Building2,
+  Loader2,
 } from "lucide-react"
 import { StatCard, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/store/auth.store"
+import { db } from "@/services/database.service"
+import { useNavigate } from "react-router-dom"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,93 +36,126 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
-// Demo data
-const todayAppointments = [
-  {
-    id: 1,
-    time: "08:00 - 09:00",
-    supplier: "Distribuidora Farmacéutica Nacional",
-    dock: "Andén 1",
-    status: "receiving" as const,
-    vehicle: "Camión 5 ton",
-  },
-  {
-    id: 2,
-    time: "09:30 - 10:30",
-    supplier: "Laboratorios del Norte",
-    dock: "Andén 2",
-    status: "scheduled" as const,
-    vehicle: "Tráiler",
-  },
-  {
-    id: 3,
-    time: "11:00 - 12:00",
-    supplier: "Medicamentos Genéricos MX",
-    dock: "Andén 3",
-    status: "pending" as const,
-    vehicle: "Camión 3.5 ton",
-  },
-  {
-    id: 4,
-    time: "14:00 - 15:30",
-    supplier: "Distribuidora Central",
-    dock: "Andén 4",
-    status: "scheduled" as const,
-    vehicle: "Refrigerado",
-  },
-]
+// Interfaces para los datos
+interface Appointment {
+  id: string
+  fecha: string
+  hora_inicio: string
+  puerta_nombre: string
+  proveedor_nombre: string
+  tipo_vehiculo_nombre: string
+  estado: string
+}
 
-const recentActivity = [
-  {
-    id: 1,
-    action: "Cita completada",
-    description: "Andén 5 - Proveedor: DIFARNA",
-    time: "Hace 30 min",
-    type: "success",
-  },
-  {
-    id: 2,
-    action: "Nuevo producto registrado",
-    description: "Paracetamol 500mg - SKU: MED-001",
-    time: "Hace 1 hora",
-    type: "info",
-  },
-  {
-    id: 3,
-    action: "Alerta de stock",
-    description: "5 productos con stock bajo",
-    time: "Hace 2 horas",
-    type: "warning",
-  },
-  {
-    id: 4,
-    action: "Proveedor actualizado",
-    description: "Laboratorios del Norte - Nuevo comprador",
-    time: "Hace 3 horas",
-    type: "info",
-  },
-]
+interface Supplier {
+  id: string
+  name: string
+}
 
-const statusColors = {
+interface Product {
+  id: string
+  name: string
+}
+
+const statusColors: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",
   pending: "bg-amber-100 text-amber-800",
   receiving: "bg-purple-100 text-purple-800",
+  receiving_started: "bg-purple-100 text-purple-800",
+  receiving_finished: "bg-emerald-100 text-emerald-800",
   complete: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-red-100 text-red-800",
 }
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   scheduled: "Programada",
   pending: "Pendiente",
   receiving: "En Recepción",
+  receiving_started: "En Recepción",
+  receiving_finished: "Completada",
   complete: "Completada",
+  cancelled: "Cancelada",
 }
 
 export function DashboardPage() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [todayAppointments, setTodayAppointments] = React.useState<Appointment[]>([])
+  const [stats, setStats] = React.useState({
+    totalAppointmentsToday: 0,
+    appointmentsInProgress: 0,
+    totalProducts: 0,
+    totalSuppliers: 0,
+    completedToday: 0,
+  })
+
+  // Cargar datos reales desde Google Sheets
+  React.useEffect(() => {
+    async function loadDashboardData() {
+      setIsLoading(true)
+      try {
+        const [appointmentsData, suppliersData, productsData] = await Promise.all([
+          db.getAll("appointments"),
+          db.getAll("suppliers"),
+          db.getAll("products"),
+        ])
+
+        // Filtrar citas de hoy
+        const today = format(new Date(), "yyyy-MM-dd")
+        const todayAppts = (appointmentsData as unknown as Array<Record<string, unknown>>)
+          .map(apt => ({
+            id: String(apt.id || apt.ID || ""),
+            fecha: String(apt.fecha || apt.Fecha || ""),
+            hora_inicio: String(apt.hora_inicio || apt.Hora || "08:00"),
+            puerta_nombre: String(apt.puerta_nombre || apt.Puerta || "Sin puerta"),
+            proveedor_nombre: String(apt.proveedor_nombre || apt["Nombre del solicitante"] || apt.Laboratorio || "Sin proveedor"),
+            tipo_vehiculo_nombre: String(apt.tipo_vehiculo_nombre || apt["tipo de vehiculo"] || ""),
+            estado: String(apt.estado || apt.Estado || "scheduled"),
+          }))
+          .filter(apt => apt.fecha === today)
+
+        setTodayAppointments(todayAppts)
+
+        // Calcular estadísticas
+        const inProgress = todayAppts.filter(a => 
+          a.estado === "receiving" || a.estado === "receiving_started"
+        ).length
+        const completed = todayAppts.filter(a => 
+          a.estado === "complete" || a.estado === "receiving_finished"
+        ).length
+
+        setStats({
+          totalAppointmentsToday: todayAppts.length,
+          appointmentsInProgress: inProgress,
+          totalProducts: (productsData as Product[]).length,
+          totalSuppliers: (suppliersData as Supplier[]).length,
+          completedToday: completed,
+        })
+      } catch (error) {
+        console.error("Error cargando datos del dashboard:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadDashboardData()
+  }, [])
 
   const currentHour = new Date().getHours()
   const greeting =
     currentHour < 12 ? "Buenos días" : currentHour < 18 ? "Buenas tardes" : "Buenas noches"
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Cargando dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -146,30 +184,27 @@ export function DashboardPage() {
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Citas de Hoy"
-          value="12"
-          description="4 en progreso"
+          value={String(stats.totalAppointmentsToday)}
+          description={`${stats.appointmentsInProgress} en progreso`}
           icon={<Calendar className="h-6 w-6" />}
-          trend={{ value: 8, isPositive: true }}
         />
         <StatCard
           title="Productos Activos"
-          value="1,234"
-          description="32 nuevos este mes"
+          value={String(stats.totalProducts)}
+          description="En catálogo"
           icon={<Package className="h-6 w-6" />}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Proveedores"
-          value="48"
-          description="5 con entregas hoy"
+          value={String(stats.totalSuppliers)}
+          description="Registrados"
           icon={<Truck className="h-6 w-6" />}
         />
         <StatCard
-          title="Tiempo Promedio"
-          value="45 min"
-          description="Por recepción"
-          icon={<Clock className="h-6 w-6" />}
-          trend={{ value: 5, isPositive: false }}
+          title="Completadas Hoy"
+          value={String(stats.completedToday)}
+          description="Recepciones finalizadas"
+          icon={<CheckCircle2 className="h-6 w-6" />}
         />
       </motion.div>
 
@@ -179,74 +214,106 @@ export function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-semibold">Citas de Hoy</CardTitle>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/citas")}>
                 Ver todas <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {todayAppointments.map((apt) => (
-                  <div
-                    key={apt.id}
-                    className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+              {todayAppointments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No hay citas programadas para hoy</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => navigate("/citas/nueva")}
                   >
-                    <div className="flex-shrink-0 w-24 text-sm font-medium text-muted-foreground">
-                      {apt.time}
+                    Programar una cita
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {todayAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-shrink-0 w-24 text-sm font-medium text-muted-foreground">
+                        {apt.hora_inicio}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{apt.proveedor_nombre}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {apt.puerta_nombre} {apt.tipo_vehiculo_nombre && `• ${apt.tipo_vehiculo_nombre}`}
+                        </p>
+                      </div>
+                      <Badge className={statusColors[apt.estado] || statusColors.scheduled}>
+                        {statusLabels[apt.estado] || "Programada"}
+                      </Badge>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{apt.supplier}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {apt.dock} • {apt.vehicle}
-                      </p>
-                    </div>
-                    <Badge className={statusColors[apt.status]}>
-                      {statusLabels[apt.status]}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Recent Activity */}
+        {/* Summary Card */}
         <motion.div variants={itemVariants}>
           <Card className="h-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Actividad Reciente</CardTitle>
+              <CardTitle className="text-lg font-semibold">Resumen del Día</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex gap-3">
-                    <div
-                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        activity.type === "success"
-                          ? "bg-emerald-100 text-emerald-600"
-                          : activity.type === "warning"
-                          ? "bg-amber-100 text-amber-600"
-                          : "bg-blue-100 text-blue-600"
-                      }`}
-                    >
-                      {activity.type === "success" ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : activity.type === "warning" ? (
-                        <AlertTriangle className="h-4 w-4" />
-                      ) : (
-                        <TrendingUp className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {activity.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {activity.time}
-                      </p>
-                    </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
+                    <Calendar className="h-4 w-4" />
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Citas Programadas</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.totalAppointmentsToday} citas para hoy
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-100 text-purple-600">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">En Proceso</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.appointmentsInProgress} recepciones activas
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Completadas</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.completedToday} recepciones finalizadas
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600">
+                    <Truck className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Proveedores Activos</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.totalSuppliers} proveedores registrados
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -267,28 +334,33 @@ export function DashboardPage() {
                   description: "Programar una entrega",
                   icon: <Calendar className="h-5 w-5" />,
                   color: "from-purple-500 to-indigo-500",
+                  path: "/citas/nueva",
                 },
                 {
                   title: "Nuevo Producto",
                   description: "Registrar producto",
                   icon: <Package className="h-5 w-5" />,
                   color: "from-emerald-500 to-teal-500",
+                  path: "/catalogo/productos/nuevo",
                 },
                 {
                   title: "Nuevo Proveedor",
                   description: "Agregar proveedor",
                   icon: <Truck className="h-5 w-5" />,
                   color: "from-blue-500 to-cyan-500",
+                  path: "/proveedores/lista",
                 },
                 {
                   title: "Generar Reporte",
                   description: "Exportar datos",
                   icon: <TrendingUp className="h-5 w-5" />,
                   color: "from-amber-500 to-orange-500",
+                  path: "/reportes",
                 },
               ].map((action) => (
                 <button
                   key={action.title}
+                  onClick={() => navigate(action.path)}
                   className="flex items-center gap-4 p-4 rounded-xl border hover:shadow-md transition-all group text-left"
                 >
                   <div

@@ -114,12 +114,20 @@ function doPost(e) {
     }
     
     // Obtener nombre de la hoja
-    const sheetName = SHEET_NAMES[entity];
+    // Acepta tanto el nombre de la entidad (ej: "appointments") como el nombre directo de la hoja (ej: "citas")
+    let sheetName = SHEET_NAMES[entity];
     if (!sheetName) {
-      return jsonResponse({ 
-        success: false, 
-        error: `Entidad no válida: ${entity}` 
-      });
+      // Intentar usar el entity directamente como nombre de hoja
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const directSheet = ss.getSheetByName(entity);
+      if (directSheet) {
+        sheetName = entity;
+      } else {
+        return jsonResponse({ 
+          success: false, 
+          error: `Entidad no válida: ${entity}. Hojas disponibles: ${ss.getSheets().map(s => s.getName()).join(', ')}` 
+        });
+      }
     }
     
     // Ejecutar acción
@@ -166,19 +174,43 @@ function createRow(sheetName, data) {
   // Obtener headers
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   
-  // Generar ID si no existe
-  if (!data.id) {
-    data.id = generateId();
-  }
+  // Generar ID único
+  const generatedId = generateId();
   
   // Agregar timestamps
   const now = new Date().toISOString();
-  data.created_at = data.created_at || now;
-  data.updated_at = now;
   
   // Crear fila con valores en el orden correcto
   const rowValues = headers.map(header => {
-    const value = data[header];
+    const headerLower = String(header).toLowerCase();
+    
+    // Manejar columna ID (puede ser "ID", "id", "Id")
+    if (headerLower === 'id') {
+      return data.id || data.ID || data.Id || generatedId;
+    }
+    
+    // Manejar timestamps
+    if (headerLower === 'created_at' || headerLower === 'createdat') {
+      return data.created_at || data.createdAt || now;
+    }
+    if (headerLower === 'updated_at' || headerLower === 'updatedat') {
+      return now;
+    }
+    
+    // Buscar el valor en el payload (case-insensitive y con variaciones)
+    let value = data[header];
+    
+    // Si no se encuentra, intentar buscar con diferentes variaciones del nombre
+    if (value === undefined) {
+      // Buscar coincidencia exacta primero
+      for (const key in data) {
+        if (key.toLowerCase() === headerLower) {
+          value = data[key];
+          break;
+        }
+      }
+    }
+    
     if (value === undefined || value === null) return '';
     if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
     return value;
@@ -187,10 +219,17 @@ function createRow(sheetName, data) {
   // Agregar fila al final
   sheet.appendRow(rowValues);
   
+  // Preparar datos de respuesta con el ID generado
+  const responseData = { ...data };
+  responseData.id = generatedId;
+  responseData.created_at = now;
+  responseData.updated_at = now;
+  
   return { 
     success: true, 
     message: 'Registro creado',
-    data: data
+    id: generatedId,
+    data: responseData
   };
 }
 

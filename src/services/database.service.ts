@@ -161,6 +161,8 @@ class DatabaseService {
   private cache: Map<string, unknown[]> = new Map()
   private initialized: boolean = false
   private initializing: Promise<void> | null = null
+  private lastRefresh: Map<string, number> = new Map()
+  private readonly CACHE_TTL = 60000 // 60 segundos de TTL para el caché (evitar límite de cuota)
 
   /**
    * Inicializa el servicio cargando datos desde Google Sheets
@@ -178,17 +180,29 @@ class DatabaseService {
       console.log('🔄 Inicializando conexión con Google Sheets...')
       
       try {
-        // Cargar todas las entidades desde Google Sheets
-        for (const [entity] of Object.entries(ENTITY_TO_SHEET)) {
+        // Solo cargar entidades esenciales al inicio para evitar límite de cuota
+        // Las demás se cargarán bajo demanda
+        const essentialEntities = [
+          'users',
+          'centros_distribucion',
+          'docks',
+          'horarios',
+          'suppliers',
+          'vehicle_types',
+          'appointments',
+        ]
+        
+        for (const entity of essentialEntities) {
           await this.loadFromGoogleSheets(entity)
         }
         
-        console.log('✅ Datos cargados desde Google Sheets')
+        console.log('✅ Datos esenciales cargados desde Google Sheets')
         this.initialized = true
       } catch (error) {
         console.error('❌ Error cargando datos de Google Sheets:', error)
         // Fallback a localStorage
         console.log('⚠️ Usando localStorage como fallback')
+        this.initialized = true
       }
     } else {
       this.initialized = true
@@ -196,36 +210,48 @@ class DatabaseService {
   }
 
   /**
+   * Verifica si el caché de una entidad ha expirado
+   */
+  private isCacheExpired(entity: string): boolean {
+    const lastTime = this.lastRefresh.get(entity)
+    if (!lastTime) return true
+    return Date.now() - lastTime > this.CACHE_TTL
+  }
+
+  /**
    * Carga datos de una entidad desde Google Sheets
    */
   private async loadFromGoogleSheets(entity: string): Promise<void> {
+    const key = `cedi_${entity}`
+    
     try {
       const result = await loadSheetData(entity)
       
       if (result.success) {
-        // Guardar en cache y localStorage incluso si está vacío
-        const key = `cedi_${entity}`
+        // Guardar en cache y localStorage - SIEMPRE actualizar con datos frescos de Google Sheets
         this.cache.set(key, result.data || [])
+        this.lastRefresh.set(entity, Date.now())
         localStorage.setItem(key, JSON.stringify(result.data || []))
-        console.log(`  ✓ ${entity}: ${result.count || 0} registros`)
+        console.log(`  ✓ ${entity}: ${result.count || 0} registros desde Google Sheets`)
       } else {
+        // Error de API (probablemente cuota) - NO usar localStorage viejo
+        // Marcar como refrescado para evitar reintentos inmediatos
+        this.lastRefresh.set(entity, Date.now())
         console.warn(`  ⚠️ Error cargando ${entity}:`, result.error)
+        
+        // Si no hay datos en caché, inicializar vacío
+        if (!this.cache.has(key)) {
+          this.cache.set(key, [])
+        }
       }
     } catch (error) {
       console.error(`  ❌ Error cargando ${entity}:`, error)
-      // Intentar usar datos del localStorage como fallback
-      const key = `cedi_${entity}`
-      const stored = localStorage.getItem(key)
-      if (stored) {
-        try {
-          const data = JSON.parse(stored)
-          this.cache.set(key, data)
-          console.log(`  ⚠️ ${entity}: usando ${data.length} registros del cache local`)
-        } catch {
-          // Si no hay cache válido, usar array vacío
-          this.cache.set(key, [])
-          localStorage.setItem(key, '[]')
-        }
+      // Marcar como refrescado para evitar reintentos inmediatos
+      this.lastRefresh.set(entity, Date.now())
+      
+      // Si no hay datos en caché, inicializar vacío
+      if (!this.cache.has(key)) {
+        this.cache.set(key, [])
       }
     }
   }
@@ -237,8 +263,53 @@ class DatabaseService {
     if (databaseConfig.adapter !== 'google-sheets') return
 
     if (entity) {
+      // Invalidar caché antes de recargar
+      this.lastRefresh.delete(entity)
       await this.loadFromGoogleSheets(entity)
     } else {
+      // Invalidar todo el caché
+      this.lastRefresh.clear()
+      for (const entityName of Object.keys(ENTITY_TO_SHEET)) {
+        await this.loadFromGoogleSheets(entityName)
+      }
+    }
+  }
+
+  /**
+   * Invalida el caché de una entidad específica o de todas
+   */
+  invalidateCache(entity?: string): void {
+    if (entity) {
+      this.lastRefresh.delete(entity)
+      const key = `cedi_${entity}`
+      this.cache.delete(key)
+    } else {
+      this.lastRefresh.clear()
+      this.cache.clear()
+    }
+  }
+
+  /**
+   * Fuerza la recarga de datos desde Google Sheets (limpia localStorage también)
+   */
+  async forceReload(entity?: string): Promise<void> {
+    if (entity) {
+      const key = `cedi_${entity}`
+      localStorage.removeItem(key)
+      this.cache.delete(key)
+      this.lastRefresh.delete(entity)
+      await this.loadFromGoogleSheets(entity)
+    } else {
+      // Limpiar todo el localStorage de CEDI
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('cedi_')) {
+          localStorage.removeItem(key)
+        }
+      })
+      this.cache.clear()
+      this.lastRefresh.clear()
+      
+      // Recargar todo
       for (const entityName of Object.keys(ENTITY_TO_SHEET)) {
         await this.loadFromGoogleSheets(entityName)
       }
@@ -256,10 +327,18 @@ class DatabaseService {
       filters?: Record<string, unknown>
       sortBy?: string
       sortOrder?: 'asc' | 'desc'
+      forceRefresh?: boolean
     }
   ): Promise<T[]> {
     // Asegurar que está inicializado
     await this.initialize()
+
+    // Si es Google Sheets y el caché expiró o se fuerza refresh, recargar
+    if (databaseConfig.adapter === 'google-sheets') {
+      if (options?.forceRefresh || this.isCacheExpired(entity)) {
+        await this.loadFromGoogleSheets(entity)
+      }
+    }
 
     const data = this.getFromStorage<T>(entity)
     

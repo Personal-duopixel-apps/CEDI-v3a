@@ -153,16 +153,21 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Es Borrador': 'is_draft',
   },
   
-  // Citas
+  // Citas - Columnas exactas de la hoja "citas"
   appointments: {
-    'Fecha': 'date',
-    'Hora Inicio': 'start_time',
-    'Hora Fin': 'end_time',
-    'ID Puerta': 'dock_id',
-    'ID Proveedor': 'supplier_id',
-    'ID Orden de Compra': 'purchase_order_id',
-    'Estado': 'status',
-    'Notas': 'notes',
+    'ID': 'id',
+    'Fecha': 'fecha',
+    'Puerta': 'puerta_nombre',
+    'Mes': 'mes',
+    'Dia': 'dia',
+    'Hora': 'hora_inicio',
+    'Centro de distribucion': 'centro_nombre',
+    'Nombre del solicitante': 'proveedor_nombre',
+    'Vehiculo': 'placas_vehiculo',
+    'tipo de vehiculo': 'tipo_vehiculo_nombre',
+    'Nombre del conductor': 'conductor_nombre',
+    'Laboratorio': 'laboratorio',
+    'Notas': 'notas',
   },
   
   // Centros de Distribución
@@ -186,12 +191,15 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Descripción': 'notes',
   },
   
-  // Tipos de Vehículo
+  // Tipos de Vehículo - Hoja: "tipos vehiculo"
   vehicle_types: {
     'Código': 'code',
+    'Nombre': 'name',
+    'Descripción': 'description',
     'Capacidad': 'capacity',
     'Peso Máximo': 'max_weight',
     'Peso (ton)': 'max_weight',
+    'Activo': 'is_active',
   },
   
   // Horarios - relacionados a Puertas
@@ -322,11 +330,22 @@ export async function readSheet(entity: string): Promise<SheetRow[]> {
     // Normalizar headers
     const headers = rawHeaders.map(h => normalizeColumnName(h, entity))
     
-    return rows.map(row => {
+    return rows.map((row, rowIndex) => {
       const obj: SheetRow = {}
       headers.forEach((header, index) => {
         obj[header] = parseValue(row[index])
       })
+      
+      // Agregar ID automático si no existe
+      // Usar el campo 'id' existente, 'ID' mapeado, 'code' como fallback, o generar uno basado en el índice
+      if (!obj.id && !obj.ID) {
+        obj.id = obj.code ? String(obj.code) : String(rowIndex + 1)
+      } else if (obj.ID && !obj.id) {
+        obj.id = String(obj.ID)
+      } else if (obj.id) {
+        obj.id = String(obj.id)
+      }
+      
       return obj
     })
   } catch (error) {
@@ -421,11 +440,22 @@ export async function loadSheetData(entity: string): Promise<{
     // Normalizar headers
     const headers = rawHeaders.map(h => normalizeColumnName(h, entity))
     
-    const parsedRows = rows.map(row => {
+    const parsedRows = rows.map((row, rowIndex) => {
       const obj: SheetRow = {}
       headers.forEach((header, index) => {
         obj[header] = parseValue(row[index])
       })
+      
+      // Agregar ID automático si no existe
+      // Usar el campo 'id' existente, 'ID' mapeado, 'code' como fallback, o generar uno basado en el índice
+      if (!obj.id && !obj.ID) {
+        obj.id = obj.code ? String(obj.code) : String(rowIndex + 1)
+      } else if (obj.ID && !obj.id) {
+        obj.id = String(obj.ID)
+      } else if (obj.id) {
+        obj.id = String(obj.id)
+      }
+      
       return obj
     })
 

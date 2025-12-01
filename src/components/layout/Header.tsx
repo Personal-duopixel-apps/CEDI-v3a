@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Bell, Search, Moon, Sun, LogOut, User, Settings, ChevronLeft } from "lucide-react"
+import { Bell, Moon, Sun, LogOut, User, Settings, ChevronLeft, Calendar, Clock, CheckCircle } from "lucide-react"
+import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/ui/input"
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuthStore } from "@/store/auth.store"
 import { useUIStore } from "@/store/ui.store"
+import { db } from "@/services/database.service"
 
 const roleLabels: Record<string, string> = {
   superadmin: "Super Administrador",
@@ -27,12 +29,96 @@ const roleLabels: Record<string, string> = {
   security: "Seguridad",
 }
 
+interface Notification {
+  id: string
+  type: "appointment" | "pending" | "completed"
+  title: string
+  description: string
+  time: string
+  color: string
+}
+
 export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { theme, setTheme, sidebarCollapsed } = useUIStore()
-  const [notifications] = React.useState(3) // Demo
+  const [notifications, setNotifications] = React.useState<Notification[]>([])
+  const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true)
+
+  // Cargar notificaciones reales basadas en citas
+  React.useEffect(() => {
+    async function loadNotifications() {
+      setIsLoadingNotifications(true)
+      try {
+        const appointmentsData = await db.getAll("appointments")
+        const today = format(new Date(), "yyyy-MM-dd")
+        
+        const notifs: Notification[] = []
+        
+        // Procesar citas para crear notificaciones
+        const appointments = appointmentsData as unknown as Array<Record<string, unknown>>
+        
+        appointments.forEach((apt, index) => {
+          const fecha = String(apt.fecha || apt.Fecha || "")
+          const hora = String(apt.hora_inicio || apt.Hora || "")
+          const proveedor = String(apt.proveedor_nombre || apt["Nombre del solicitante"] || apt.Laboratorio || "Proveedor")
+          const puerta = String(apt.puerta_nombre || apt.Puerta || "")
+          const estado = String(apt.estado || apt.Estado || "scheduled")
+          
+          // Citas de hoy programadas
+          if (fecha === today && (estado === "scheduled" || !estado)) {
+            notifs.push({
+              id: `apt-${index}`,
+              type: "appointment",
+              title: "Cita programada para hoy",
+              description: `${proveedor} - ${hora} - ${puerta}`,
+              time: hora,
+              color: "bg-blue-500",
+            })
+          }
+          
+          // Citas en proceso
+          if (estado === "receiving" || estado === "receiving_started") {
+            notifs.push({
+              id: `receiving-${index}`,
+              type: "pending",
+              title: "Recepción en proceso",
+              description: `${proveedor} - ${puerta}`,
+              time: "Ahora",
+              color: "bg-amber-500",
+            })
+          }
+          
+          // Citas completadas hoy
+          if (fecha === today && (estado === "complete" || estado === "receiving_finished")) {
+            notifs.push({
+              id: `completed-${index}`,
+              type: "completed",
+              title: "Recepción completada",
+              description: `${proveedor} - ${puerta}`,
+              time: hora,
+              color: "bg-emerald-500",
+            })
+          }
+        })
+        
+        // Limitar a las últimas 5 notificaciones
+        setNotifications(notifs.slice(0, 5))
+      } catch (error) {
+        console.error("Error cargando notificaciones:", error)
+        setNotifications([])
+      } finally {
+        setIsLoadingNotifications(false)
+      }
+    }
+
+    loadNotifications()
+    
+    // Recargar cada 60 segundos
+    const interval = setInterval(loadNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -88,12 +174,12 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              {notifications > 0 && (
+              {notifications.length > 0 && (
                 <Badge
                   variant="destructive"
                   className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
                 >
-                  {notifications}
+                  {notifications.length}
                 </Badge>
               )}
             </Button>
@@ -101,35 +187,42 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="space-y-2 p-2">
-              <div className="flex gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
-                <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Nueva cita programada</p>
-                  <p className="text-xs text-muted-foreground">Proveedor: DIFARNA - 10:30 AM</p>
-                  <p className="text-xs text-muted-foreground mt-1">Hace 5 minutos</p>
+            <div className="space-y-2 p-2 max-h-80 overflow-y-auto">
+              {isLoadingNotifications ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">Cargando...</p>
                 </div>
-              </div>
-              <div className="flex gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
-                <div className="h-2 w-2 rounded-full bg-amber-500 mt-2" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Datos de transporte pendientes</p>
-                  <p className="text-xs text-muted-foreground">Cita #CTA-001234</p>
-                  <p className="text-xs text-muted-foreground mt-1">Hace 2 horas</p>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay notificaciones</p>
                 </div>
-              </div>
-              <div className="flex gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 mt-2" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Recepción completada</p>
-                  <p className="text-xs text-muted-foreground">Andén 3 - Laboratorios del Norte</p>
-                  <p className="text-xs text-muted-foreground mt-1">Hace 4 horas</p>
-                </div>
-              </div>
+              ) : (
+                notifications.map((notif) => (
+                  <div 
+                    key={notif.id} 
+                    className="flex gap-3 rounded-lg p-2 hover:bg-muted cursor-pointer"
+                    onClick={() => navigate("/citas")}
+                  >
+                    <div className={cn("h-2 w-2 rounded-full mt-2", notif.color)} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{notif.title}</p>
+                      <p className="text-xs text-muted-foreground">{notif.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                    </div>
+                    {notif.type === "appointment" && <Calendar className="h-4 w-4 text-blue-500" />}
+                    {notif.type === "pending" && <Clock className="h-4 w-4 text-amber-500" />}
+                    {notif.type === "completed" && <CheckCircle className="h-4 w-4 text-emerald-500" />}
+                  </div>
+                ))
+              )}
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-primary">
-              Ver todas las notificaciones
+            <DropdownMenuItem 
+              className="justify-center text-primary cursor-pointer"
+              onClick={() => navigate("/citas")}
+            >
+              Ver todas las citas
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

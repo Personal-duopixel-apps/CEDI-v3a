@@ -56,17 +56,19 @@ interface BookingSelection {
   horario: string | null
 }
 
+interface ExistingAppointment {
+  id: string
+  puerta_nombre: string  // Nombre de la puerta (como viene de Google Sheets)
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+}
+
 interface BookingStep1Props {
   centros: CentroDistribucion[]
   puertas: Puerta[]
   horarios: Horario[]
-  existingAppointments: Array<{
-    id: string
-    puerta_id: string
-    fecha: string
-    hora_inicio: string
-    hora_fin: string
-  }>
+  existingAppointments: ExistingAppointment[]
   onSelectionComplete: (selection: BookingSelection) => void
 }
 
@@ -141,12 +143,19 @@ export function BookingStep1({
       const timeStr = `${hour.toString().padStart(2, "0")}:00`
       const dateStr = format(selectedDate, "yyyy-MM-dd")
       
-      // Verificar si el slot está ocupado
-      const isOccupied = existingAppointments.some(apt => 
-        apt.puerta_id === selectedPuerta.id &&
-        apt.fecha === dateStr &&
-        apt.hora_inicio === timeStr
-      )
+      // Verificar si el slot está ocupado - comparar por nombre de puerta
+      const isOccupied = existingAppointments.some(apt => {
+        const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
+                           apt.puerta_nombre === selectedPuerta.id
+        const fechaMatch = apt.fecha === dateStr
+        const horaMatch = apt.hora_inicio === timeStr
+        
+        if (puertaMatch && fechaMatch && horaMatch) {
+          console.log(`⚠️ Slot ocupado: ${dateStr} ${timeStr} en ${selectedPuerta.name}`)
+        }
+        
+        return puertaMatch && fechaMatch && horaMatch
+      })
 
       slots.push({
         time: timeStr,
