@@ -40,42 +40,68 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Información de Contacto': 'contact_info',
   },
   
-  // Formas Farmacéuticas
+  // Formas Farmacéuticas (español e inglés)
   formas_farmaceuticas: {},
+  pharmaceutical_forms: {},  // Alias en inglés
   
-  // Unidades de Medida
+  // Unidades de Medida (español e inglés)
   unidades_medida: {
     'Símbolo': 'symbol',
     'Tipo': 'type',
   },
+  measurement_units: {  // Alias en inglés
+    'Símbolo': 'symbol',
+    'Tipo': 'type',
+  },
   
-  // Tipos de Empaque
+  // Tipos de Empaque (español e inglés)
   tipos_empaque: {
     'Unidades por Empaque': 'units_per_pack',
   },
+  package_types: {  // Alias en inglés
+    'Unidades por Empaque': 'units_per_pack',
+  },
   
-  // Impuestos
+  // Impuestos (español e inglés)
   impuestos: {
     'Porcentaje': 'percentage',
     'Tasa': 'rate',
   },
+  taxes: {  // Alias en inglés
+    'Porcentaje': 'percentage',
+    'Tasa': 'rate',
+  },
   
-  // Monedas
+  // Monedas (español e inglés)
   monedas: {
     'Símbolo': 'symbol',
     'Tasa de Cambio': 'exchange_rate',
   },
+  currencies: {  // Alias en inglés
+    'Símbolo': 'symbol',
+    'Tasa de Cambio': 'exchange_rate',
+  },
   
-  // Niveles de Producto
+  // Niveles de Producto (español e inglés)
   niveles_producto: {
     'Nivel': 'level',
     'ID Padre': 'parent_id',
   },
+  product_levels: {  // Alias en inglés
+    'Nivel': 'level',
+    'ID Padre': 'parent_id',
+  },
   
-  // Principios Activos
+  // Principios Activos (español e inglés)
   principios_activos: {
     'Concentración': 'concentration',
   },
+  active_ingredients: {  // Alias en inglés
+    'Concentración': 'concentration',
+  },
+  
+  // Clasificaciones (español e inglés)
+  classifications: {},  // Alias en inglés
   
   // Compradores
   buyers: {

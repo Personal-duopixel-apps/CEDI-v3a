@@ -92,18 +92,43 @@ const ENTITY_TO_SHEET: Record<string, string> = {
   users: 'usuarios',
   audit_logs: 'audit_logs',
   
-  // Catálogos
+  // Catálogos (nombres en español e inglés apuntan a las mismas hojas)
   products: 'productos',
   laboratories: 'laboratorios',
+  
+  // Clasificaciones
   categories: 'clasificaciones',
+  classifications: 'clasificaciones',  // Alias en inglés
   drug_categories: 'clasificaciones',
+  
+  // Formas Farmacéuticas
   formas_farmaceuticas: 'formas farmaceuticas',
+  pharmaceutical_forms: 'formas farmaceuticas',  // Alias en inglés
+  
+  // Unidades de Medida
   unidades_medida: 'unidades de medida',
+  measurement_units: 'unidades de medida',  // Alias en inglés
+  
+  // Tipos de Empaque
   tipos_empaque: 'tipos de empaque',
+  package_types: 'tipos de empaque',  // Alias en inglés
+  
+  // Impuestos
   impuestos: 'impuestos',
+  taxes: 'impuestos',  // Alias en inglés
+  
+  // Monedas
   monedas: 'monedas',
+  currencies: 'monedas',  // Alias en inglés
+  
+  // Niveles de Producto
   niveles_producto: 'niveles de producto',
+  product_levels: 'niveles de producto',  // Alias en inglés
+  
+  // Principios Activos
   principios_activos: 'principios activos',
+  active_ingredients: 'principios activos',  // Alias en inglés
+  
   medidas_peso: 'medidas peso',
   
   // Proveedores
@@ -177,15 +202,31 @@ class DatabaseService {
     try {
       const result = await loadSheetData(entity)
       
-      if (result.success && result.data.length > 0) {
-        // Guardar en cache y localStorage
+      if (result.success) {
+        // Guardar en cache y localStorage incluso si está vacío
         const key = `cedi_${entity}`
-        this.cache.set(key, result.data)
-        localStorage.setItem(key, JSON.stringify(result.data))
-        console.log(`  ✓ ${entity}: ${result.count} registros`)
+        this.cache.set(key, result.data || [])
+        localStorage.setItem(key, JSON.stringify(result.data || []))
+        console.log(`  ✓ ${entity}: ${result.count || 0} registros`)
+      } else {
+        console.warn(`  ⚠️ Error cargando ${entity}:`, result.error)
       }
     } catch (error) {
-      console.warn(`  ⚠️ No se pudo cargar ${entity}:`, error)
+      console.error(`  ❌ Error cargando ${entity}:`, error)
+      // Intentar usar datos del localStorage como fallback
+      const key = `cedi_${entity}`
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        try {
+          const data = JSON.parse(stored)
+          this.cache.set(key, data)
+          console.log(`  ⚠️ ${entity}: usando ${data.length} registros del cache local`)
+        } catch {
+          // Si no hay cache válido, usar array vacío
+          this.cache.set(key, [])
+          localStorage.setItem(key, '[]')
+        }
+      }
     }
   }
 

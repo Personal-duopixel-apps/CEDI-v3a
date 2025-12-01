@@ -31,8 +31,14 @@ interface GenericFormProps<T extends FieldValues> {
   className?: string
 }
 
-// Cache de opciones dinámicas
-const optionsCache: Record<string, { value: string; label: string }[]> = {}
+// Cache de opciones dinámicas (se limpia cada vez que se abre el formulario)
+// Para evitar problemas con datos desactualizados
+let optionsCache: Record<string, { value: string; label: string }[]> = {}
+
+// Función para limpiar el cache manualmente si es necesario
+export function clearOptionsCache() {
+  optionsCache = {}
+}
 
 export function GenericForm<T extends FieldValues>({
   fields,
@@ -61,21 +67,19 @@ export function GenericForm<T extends FieldValues>({
       for (const field of fieldsWithEntity) {
         if (!field.optionsEntity) continue
         
-        // Usar cache si está disponible
-        if (optionsCache[field.optionsEntity]) {
-          setDynamicOptions(prev => ({
-            ...prev,
-            [field.name]: optionsCache[field.optionsEntity!]
-          }))
-          continue
-        }
-        
         try {
+          // Siempre cargar opciones frescas para asegurar datos actualizados
           const items = await db.getAll<BaseEntity>(field.optionsEntity)
-          const options = items.map(item => ({
-            value: String(item.id || item.name || item.Nombre || ''),
-            label: String(item.name || item.Nombre || item.Codigo || item.Código || item.id || '')
-          }))
+          const options = items.map(item => {
+            // Usar el nombre como value (coincide con lo que se guarda en Google Sheets)
+            const name = String(item.name || item.Nombre || '')
+            return {
+              value: name,  // El valor guardado es el nombre, no el ID
+              label: name
+            }
+          }).filter(opt => opt.value) // Filtrar opciones vacías
+          
+          console.log(`📋 Opciones cargadas para ${field.name}:`, options)
           
           // Guardar en cache
           optionsCache[field.optionsEntity] = options

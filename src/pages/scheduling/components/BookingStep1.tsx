@@ -106,13 +106,32 @@ export function BookingStep1({
     if (!selectedPuerta || !selectedDate) return []
 
     const dayName = format(selectedDate, "EEEE", { locale: es })
+    
     // Buscar horarios que pertenezcan a la puerta seleccionada y coincidan con el día
-    const dayHorario = horarios.find(h => 
-      h.day?.toLowerCase() === dayName.toLowerCase() &&
-      (!h.dock_id || h.dock_id === selectedPuerta.id || h.dock_id === selectedPuerta.name)
-    )
+    // Comparamos por: dock_id, nombre del horario (que es el nombre de la puerta), o ID de puerta
+    const dayHorario = horarios.find(h => {
+      const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
+      if (!dayMatches) return false
+      
+      // El horario puede relacionarse por:
+      // 1. dock_id coincide con ID de la puerta
+      // 2. dock_id coincide con nombre de la puerta
+      // 3. name del horario coincide con nombre de la puerta (Google Sheet usa 'Nombre' como nombre de puerta)
+      // 4. Si no tiene dock_id, mostrar para todas las puertas
+      const puertaMatches = !h.dock_id || 
+        h.dock_id === selectedPuerta.id || 
+        h.dock_id === selectedPuerta.name ||
+        h.name === selectedPuerta.name
+      
+      return puertaMatches
+    })
 
-    if (!dayHorario) return []
+    if (!dayHorario) {
+      console.log(`No se encontró horario para ${selectedPuerta.name} en ${dayName}`)
+      return []
+    }
+
+    console.log(`Horario encontrado para ${selectedPuerta.name}:`, dayHorario)
 
     const slots: TimeSlot[] = []
     const startHour = parseInt(dayHorario.start_time?.split(":")[0] || "8")
@@ -342,9 +361,15 @@ export function BookingStep1({
                     const isToday = isSameDay(day, new Date())
                     const isPast = day < new Date() && !isToday
                     const dayName = format(day, "EEEE", { locale: es })
-                    const hasSchedule = horarios.some(h => 
-                      h.day?.toLowerCase() === dayName.toLowerCase()
-                    )
+                    // Verificar si hay horario para la puerta seleccionada en este día
+                    const hasSchedule = horarios.some(h => {
+                      const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
+                      const puertaMatches = !h.dock_id || 
+                        h.dock_id === selectedPuerta?.id || 
+                        h.dock_id === selectedPuerta?.name ||
+                        h.name === selectedPuerta?.name
+                      return dayMatches && puertaMatches
+                    })
 
                     return (
                       <motion.button
