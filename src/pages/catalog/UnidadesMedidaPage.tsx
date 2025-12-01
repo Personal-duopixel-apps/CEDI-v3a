@@ -5,22 +5,22 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets (nombres mapeados)
 interface UnidadMedida extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Abreviatura?: string
-  Descripcion?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  symbol?: string  // Símbolo en Google Sheets
+  description?: string
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const unidadSchema = z.object({
-  Codigo: stringFromAny,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Abreviatura: optionalString,
-  Descripcion: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  symbol: optionalString,
+  description: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
@@ -30,7 +30,7 @@ const config: CRUDConfig = {
     singular: "Unidad de Medida",
     plural: "Unidades de Medida",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -53,31 +53,31 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<UnidadMedida>[] = [
   { 
-    key: "Codigo" as keyof UnidadMedida, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof UnidadMedida, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Abreviatura" as keyof UnidadMedida, 
+    key: "symbol", 
     label: "Abreviatura",
     render: (value) => value || '-'
   },
   { 
-    key: "Descripcion" as keyof UnidadMedida, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof UnidadMedida,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -90,36 +90,36 @@ const columns: DataTableColumn<UnidadMedida>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
     placeholder: "Código de la unidad",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Ej: Kilogramo, Litro, Unidad...",
   },
   {
-    name: "Abreviatura",
+    name: "symbol",
     label: "Abreviatura",
     type: "text",
     placeholder: "Ej: kg, L, ud...",
   },
   {
-    name: "Descripcion",
+    name: "description",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción de la unidad de medida",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -134,9 +134,8 @@ export function UnidadesMedidaPage() {
       columns={columns}
       formFields={formFields}
       formSchema={unidadSchema}
-      searchFields={["Codigo", "Nombre", "Abreviatura"] as (keyof UnidadMedida)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name", "symbol"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }
-

@@ -5,22 +5,22 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets (nombres mapeados)
 interface Moneda extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Simbolo?: string
-  Descripcion?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  symbol?: string
+  description?: string
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const monedaSchema = z.object({
-  Codigo: stringFromAny,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Simbolo: optionalString,
-  Descripcion: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  symbol: optionalString,
+  description: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
@@ -30,7 +30,7 @@ const config: CRUDConfig = {
     singular: "Moneda",
     plural: "Monedas",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -53,31 +53,31 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<Moneda>[] = [
   { 
-    key: "Codigo" as keyof Moneda, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof Moneda, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Simbolo" as keyof Moneda, 
+    key: "symbol", 
     label: "Símbolo",
     render: (value) => value || '-'
   },
   { 
-    key: "Descripcion" as keyof Moneda, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof Moneda,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -90,36 +90,36 @@ const columns: DataTableColumn<Moneda>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código ISO",
     type: "text",
     placeholder: "Ej: MXN, USD, EUR...",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Ej: Peso Mexicano, Dólar Americano...",
   },
   {
-    name: "Simbolo",
+    name: "symbol",
     label: "Símbolo",
     type: "text",
     placeholder: "Ej: $, €, £...",
   },
   {
-    name: "Descripcion",
+    name: "description",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción de la moneda",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -134,9 +134,8 @@ export function MonedasPage() {
       columns={columns}
       formFields={formFields}
       formSchema={monedaSchema}
-      searchFields={["Codigo", "Nombre", "Simbolo"] as (keyof Moneda)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name", "symbol"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }
-

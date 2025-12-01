@@ -1,34 +1,34 @@
 import { z } from "zod"
 import { CRUDPage } from "@/components/crud/CRUDPage"
 import { Badge } from "@/components/ui/badge"
-import { booleanFromString, optionalString } from "@/lib/schema-helpers"
+import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-helpers"
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo de categoría basado en Google Sheets
+// Tipo de categoría basado en Google Sheets (nombres mapeados)
 interface Category extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Descripción?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  description?: string
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const categorySchema = z.object({
-  Codigo: optionalString,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Descripción: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  description: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
 const config: CRUDConfig = {
   entity: "drug_categories",
   labels: {
-    singular: "Clasificación",
-    plural: "Clasificaciones",
+    singular: "Categoría",
+    plural: "Categorías",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -37,40 +37,40 @@ const config: CRUDConfig = {
   },
   messages: {
     create: {
-      success: "Clasificación creada exitosamente",
-      error: "Error al crear la clasificación",
+      success: "Categoría creada exitosamente",
+      error: "Error al crear la categoría",
     },
     update: {
-      success: "Clasificación actualizada exitosamente",
-      error: "Error al actualizar la clasificación",
+      success: "Categoría actualizada exitosamente",
+      error: "Error al actualizar la categoría",
     },
     delete: {
-      success: "Clasificación eliminada exitosamente",
-      error: "Error al eliminar la clasificación",
+      success: "Categoría eliminada exitosamente",
+      error: "Error al eliminar la categoría",
     },
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<Category>[] = [
   { 
-    key: "Codigo" as keyof Category, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof Category, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Descripción" as keyof Category, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof Category,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -83,30 +83,30 @@ const columns: DataTableColumn<Category>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
-    placeholder: "Código de la clasificación",
+    placeholder: "Código de la categoría",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
-    placeholder: "Nombre de la clasificación",
+    placeholder: "Nombre de la categoría",
   },
   {
-    name: "Descripción",
+    name: "description",
     label: "Descripción",
     type: "textarea",
-    placeholder: "Descripción de la clasificación",
+    placeholder: "Descripción de la categoría",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -121,8 +121,8 @@ export function CategoriesPage() {
       columns={columns}
       formFields={formFields}
       formSchema={categorySchema}
-      searchFields={["Codigo", "Nombre"] as (keyof Category)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }

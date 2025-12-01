@@ -5,20 +5,20 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets (nombres mapeados)
 interface Clasificacion extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Descripción?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  description?: string
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const clasificacionSchema = z.object({
-  Codigo: stringFromAny,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Descripción: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  description: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
@@ -28,7 +28,7 @@ const config: CRUDConfig = {
     singular: "Clasificación",
     plural: "Clasificaciones",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -51,26 +51,26 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<Clasificacion>[] = [
   { 
-    key: "Codigo" as keyof Clasificacion, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof Clasificacion, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Descripción" as keyof Clasificacion, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof Clasificacion,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -83,30 +83,30 @@ const columns: DataTableColumn<Clasificacion>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
     placeholder: "Código de la clasificación",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Nombre de la clasificación",
   },
   {
-    name: "Descripción",
+    name: "description",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción de la clasificación",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -121,9 +121,8 @@ export function ClasificacionesPage() {
       columns={columns}
       formFields={formFields}
       formSchema={clasificacionSchema}
-      searchFields={["Codigo", "Nombre"] as (keyof Clasificacion)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }
-

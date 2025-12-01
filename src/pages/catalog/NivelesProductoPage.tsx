@@ -5,20 +5,20 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets (nombres mapeados)
 interface NivelProducto extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Descripción?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  description?: string
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const nivelSchema = z.object({
-  Codigo: stringFromAny,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Descripción: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  description: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
@@ -28,7 +28,7 @@ const config: CRUDConfig = {
     singular: "Nivel de Producto",
     plural: "Niveles de Producto",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -51,26 +51,26 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<NivelProducto>[] = [
   { 
-    key: "Codigo" as keyof NivelProducto, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof NivelProducto, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Descripción" as keyof NivelProducto, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof NivelProducto,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -83,30 +83,30 @@ const columns: DataTableColumn<NivelProducto>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
     placeholder: "Código del nivel",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Nombre del nivel de producto",
   },
   {
-    name: "Descripción",
+    name: "description",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción del nivel",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -121,9 +121,8 @@ export function NivelesProductoPage() {
       columns={columns}
       formFields={formFields}
       formSchema={nivelSchema}
-      searchFields={["Codigo", "Nombre"] as (keyof NivelProducto)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }
-

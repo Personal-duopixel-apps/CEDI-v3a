@@ -28,12 +28,13 @@ export const databaseConfig = {
     spreadsheetId: '1E7UF4d9XLZf90dZ-2uNhJ1lxMDxD3qu4CZdsKdAsVVw',
     
     // Nombres de las hojas (pestañas) - DEBEN COINCIDIR EXACTAMENTE con el Google Sheet
+    // Incluye alias en inglés para las páginas que usan nombres en inglés
     sheetNames: {
       // Usuarios y Seguridad
       users: 'usuarios',
       audit_logs: 'audit_logs',
       
-      // Catálogos
+      // Catálogos (nombres en español)
       products: 'productos',
       laboratories: 'laboratorios',
       categories: 'clasificaciones',
@@ -46,6 +47,16 @@ export const databaseConfig = {
       niveles_producto: 'niveles de producto',
       principios_activos: 'principios activos',
       medidas_peso: 'medidas peso',
+      
+      // Catálogos (alias en inglés para las páginas)
+      classifications: 'clasificaciones',
+      pharmaceutical_forms: 'formas farmaceuticas',
+      measurement_units: 'unidades de medida',
+      package_types: 'tipos de empaque',
+      taxes: 'impuestos',
+      currencies: 'monedas',
+      product_levels: 'niveles de producto',
+      active_ingredients: 'principios activos',
       
       // Proveedores
       suppliers: 'proveedores',
