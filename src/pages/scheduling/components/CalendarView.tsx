@@ -50,6 +50,11 @@ export interface CalendarAppointment {
   placas_vehiculo?: string
   ordenes_compra?: string[]
   notas?: string
+  // Nuevos campos para flujo de 3 fases
+  token?: string
+  contacto_nombre?: string
+  contacto_email?: string
+  codigo_cita?: string
 }
 
 interface CalendarViewProps {
@@ -59,11 +64,20 @@ interface CalendarViewProps {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  // Fase 1 - Pendiente datos de transporte
+  pending_transport: { label: "Pend. Transporte", color: "bg-amber-100 text-amber-800 border-amber-200", icon: AlertTriangle },
+  pending_transport_data: { label: "Pend. Transporte", color: "bg-amber-100 text-amber-800 border-amber-200", icon: AlertTriangle },
+  // Fase 2 - Datos de transporte completados, lista para aprobar
+  transport_completed: { label: "Lista p/Aprobar", color: "bg-blue-100 text-blue-800 border-blue-200", icon: Calendar },
+  // Fase 3 - Aprobada con código
+  approved: { label: "Aprobada", color: "bg-indigo-100 text-indigo-800 border-indigo-200", icon: CheckCircle2 },
   scheduled: { label: "Programada", color: "bg-blue-100 text-blue-800 border-blue-200", icon: Calendar },
-  pending_transport_data: { label: "Datos Pendientes", color: "bg-amber-100 text-amber-800 border-amber-200", icon: AlertTriangle },
-  complete: { label: "Completa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
+  // En proceso
   receiving_started: { label: "En Recepción", color: "bg-purple-100 text-purple-800 border-purple-200", icon: Truck },
+  // Completadas
+  complete: { label: "Completa", color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
   receiving_finished: { label: "Finalizada", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
+  // Canceladas/No presentados
   cancelled: { label: "Cancelada", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
   did_not_show: { label: "No Presentado", color: "bg-gray-100 text-gray-800 border-gray-200", icon: XCircle },
 }
@@ -413,9 +427,58 @@ export function CalendarView({
                   )}
                 </div>
 
+                {/* Código de cita si está aprobada */}
+                {selectedAppointment.codigo_cita && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-600 mb-1">Código de Confirmación</p>
+                    <p className="text-2xl font-bold font-mono text-green-800 tracking-wider">
+                      {selectedAppointment.codigo_cita}
+                    </p>
+                  </div>
+                )}
+
                 {/* Acciones según estado */}
                 <div className="mt-6 flex flex-wrap gap-2 justify-end">
-                  {selectedAppointment.estado === "scheduled" && onStatusChange && (
+                  {/* Citas pendientes de transporte */}
+                  {selectedAppointment.estado === "pending_transport" && onStatusChange && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        onStatusChange(selectedAppointment.id, "cancelled")
+                        setSelectedAppointment(null)
+                      }}
+                    >
+                      Cancelar Cita
+                    </Button>
+                  )}
+
+                  {/* Citas listas para aprobar (transporte completado) */}
+                  {selectedAppointment.estado === "transport_completed" && onStatusChange && (
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          onStatusChange(selectedAppointment.id, "cancelled")
+                          setSelectedAppointment(null)
+                        }}
+                      >
+                        Cancelar Cita
+                      </Button>
+                      <Button
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        onClick={() => {
+                          onStatusChange(selectedAppointment.id, "approved")
+                          setSelectedAppointment(null)
+                        }}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Aprobar Cita
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Citas programadas/aprobadas */}
+                  {(selectedAppointment.estado === "scheduled" || selectedAppointment.estado === "approved") && onStatusChange && (
                     <>
                       <Button
                         variant="destructive"
@@ -436,6 +499,8 @@ export function CalendarView({
                       </Button>
                     </>
                   )}
+
+                  {/* Citas en recepción */}
                   {selectedAppointment.estado === "receiving_started" && onStatusChange && (
                     <Button
                       variant="success"

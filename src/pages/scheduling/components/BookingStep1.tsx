@@ -138,24 +138,40 @@ export function BookingStep1({
     const slots: TimeSlot[] = []
     const startHour = parseInt(dayHorario.start_time?.split(":")[0] || "8")
     const endHour = parseInt(dayHorario.end_time?.split(":")[0] || "17")
+    const dateStr = format(selectedDate, "yyyy-MM-dd")
+
+    // Debug: mostrar citas existentes para esta puerta y fecha
+    const citasParaEstaPuerta = existingAppointments.filter(apt => {
+      const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
+                         apt.puerta_nombre === selectedPuerta.id
+      const fechaMatch = apt.fecha === dateStr
+      return puertaMatch && fechaMatch
+    })
+    
+    if (citasParaEstaPuerta.length > 0) {
+      console.log(`📅 Citas existentes para ${selectedPuerta.name} el ${dateStr}:`, citasParaEstaPuerta)
+    }
 
     for (let hour = startHour; hour < endHour; hour++) {
       const timeStr = `${hour.toString().padStart(2, "0")}:00`
-      const dateStr = format(selectedDate, "yyyy-MM-dd")
+      // También crear versión sin padding para comparar con datos de Google Sheets
+      const timeStrNoPad = `${hour}:00`
       
       // Verificar si el slot está ocupado - comparar por nombre de puerta
       const isOccupied = existingAppointments.some(apt => {
         const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
                            apt.puerta_nombre === selectedPuerta.id
         const fechaMatch = apt.fecha === dateStr
-        const horaMatch = apt.hora_inicio === timeStr
-        
-        if (puertaMatch && fechaMatch && horaMatch) {
-          console.log(`⚠️ Slot ocupado: ${dateStr} ${timeStr} en ${selectedPuerta.name}`)
-        }
+        // Comparar hora con y sin padding (ej: "09:00" y "9:00")
+        const aptHora = apt.hora_inicio?.trim()
+        const horaMatch = aptHora === timeStr || aptHora === timeStrNoPad
         
         return puertaMatch && fechaMatch && horaMatch
       })
+
+      if (isOccupied) {
+        console.log(`🚫 Slot OCUPADO: ${dateStr} ${timeStr} en ${selectedPuerta.name}`)
+      }
 
       slots.push({
         time: timeStr,

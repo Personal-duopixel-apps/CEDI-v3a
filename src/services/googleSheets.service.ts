@@ -168,6 +168,25 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Nombre del conductor': 'conductor_nombre',
     'Laboratorio': 'laboratorio',
     'Notas': 'notas',
+    // Nuevos campos para flujo de 3 fases
+    'Token': 'token',
+    'Estado': 'estado',
+    'Contacto_Nombre': 'contacto_nombre',
+    'Contacto_Email': 'contacto_email',
+    'Contacto_Telefono': 'contacto_telefono',
+    'Ordenes_Compra': 'ordenes_compra',
+    'Codigo_Cita': 'codigo_cita',
+    // Campos de transporte adicionales
+    'marca_vehiculo': 'marca_vehiculo',
+    'modelo_vehiculo': 'modelo_vehiculo',
+    'color_vehiculo': 'color_vehiculo',
+    'telefono_conductor': 'telefono_conductor',
+    'licencia_conductor': 'licencia_conductor',
+    'dpi_conductor': 'dpi_conductor',
+    'ayudantes': 'ayudantes',
+    'notas_transporte': 'notas_transporte',
+    'fecha_transporte_completado': 'fecha_transporte_completado',
+    'fecha_aprobacion': 'fecha_aprobacion',
   },
   
   // Centros de Distribución

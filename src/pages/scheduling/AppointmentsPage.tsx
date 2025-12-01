@@ -7,6 +7,9 @@ import {
   Plus,
   CalendarDays,
   CheckCircle,
+  Mail,
+  Copy,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,8 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { db } from "@/services/database.service"
 import { useToast } from "@/store/ui.store"
 import { BookingStep1 } from "./components/BookingStep1"
-import { BookingStep2, type AppointmentFormData } from "./components/BookingStep2"
+import { BookingStep2Phase1, type AppointmentFormDataPhase1 } from "./components/BookingStep2Phase1"
 import { CalendarView, type CalendarAppointment } from "./components/CalendarView"
+import { generateAppointmentToken, generateTransportLink, generatePhase1EmailHTML, sendEmail } from "@/services/email.service"
 
 interface BookingSelection {
   centro: { id: string; name: string; city?: string } | null
@@ -40,10 +44,18 @@ export function AppointmentsPage() {
   const [centros, setCentros] = React.useState<Array<{ id: string; name: string; city?: string; code?: string }>>([])
   const [puertas, setPuertas] = React.useState<Array<{ id: string; name: string; type?: string; notes?: string; distribution_center_id?: string }>>([])
   const [horarios, setHorarios] = React.useState<Array<{ id: string; day: string; start_time: string; end_time: string; dock_id?: string }>>([])
-  const [proveedores, setProveedores] = React.useState<Array<{ id: string; name: string }>>([])
+  const [proveedores, setProveedores] = React.useState<Array<{ id: string; name: string; contact_email?: string; contact_phone?: string; contact_name?: string }>>([])
   const [tiposVehiculo, setTiposVehiculo] = React.useState<Array<{ id: string; name: string }>>([])
   const [appointments, setAppointments] = React.useState<CalendarAppointment[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  
+  // Estado para mostrar el enlace de transporte después de crear la cita
+  const [createdAppointmentInfo, setCreatedAppointmentInfo] = React.useState<{
+    token: string
+    transportLink: string
+    email: string
+    proveedorNombre: string
+  } | null>(null)
 
   // Cargar datos - usa caché con TTL automático
   React.useEffect(() => {
@@ -113,22 +125,11 @@ export function AppointmentsPage() {
     setBookingStep(2)
   }
 
-  // Manejar creación de cita
-  const handleCreateAppointment = async (formData: AppointmentFormData) => {
+  // Manejar creación de cita - Fase 1 (solo datos básicos)
+  const handleCreateAppointment = async (formData: AppointmentFormDataPhase1) => {
     setIsSubmitting(true)
     try {
       const proveedor = proveedores.find(p => p.id === formData.proveedor_id)
-      const tipoVehiculo = tiposVehiculo.find(t => t.id === formData.tipo_vehiculo_id)
-
-      // Debug: Verificar datos seleccionados
-      console.log("📋 Creando cita con datos:", {
-        proveedor,
-        tipoVehiculo,
-        bookingSelection,
-        formData,
-        proveedores_disponibles: proveedores,
-        tipos_vehiculo_disponibles: tiposVehiculo,
-      })
 
       // Validar que tenemos todos los datos necesarios
       if (!bookingSelection.puerta?.name) {
@@ -144,6 +145,10 @@ export function AppointmentsPage() {
         return
       }
 
+      // Generar token único para la cita
+      const appointmentToken = generateAppointmentToken()
+      const transportLink = generateTransportLink(appointmentToken)
+
       // Formato para Google Sheets - columnas exactas de la hoja "citas"
       const fechaCita = bookingSelection.fecha || new Date()
       const newAppointment = {
@@ -155,11 +160,19 @@ export function AppointmentsPage() {
         "Hora": bookingSelection.horario || "08:00",
         "Centro de distribucion": bookingSelection.centro?.name || "",
         "Nombre del solicitante": proveedor?.name || "",
-        "Vehiculo": formData.placas_vehiculo || "",
-        "tipo de vehiculo": tipoVehiculo?.name || "",
-        "Nombre del conductor": formData.conductor_nombre || "",
         "Laboratorio": proveedor?.name || "",
         "Notas": formData.notas || "",
+        // Nuevos campos para el flujo de 3 fases
+        "Token": appointmentToken,
+        "Estado": "pending_transport", // Fase 1 completada, pendiente de datos de transporte
+        "Contacto_Nombre": formData.contacto_nombre,
+        "Contacto_Email": formData.contacto_email,
+        "Contacto_Telefono": formData.contacto_telefono || "",
+        "Ordenes_Compra": formData.ordenes_compra || "",
+        // Campos de transporte vacíos (se llenarán en Fase 2)
+        "Vehiculo": "",
+        "tipo de vehiculo": "",
+        "Nombre del conductor": "",
       }
       
       // Datos adicionales para el estado local del calendario
@@ -169,30 +182,69 @@ export function AppointmentsPage() {
         proveedor_nombre: proveedor?.name || "Sin proveedor",
         puerta_nombre: bookingSelection.puerta?.name || "Sin puerta",
         centro_nombre: bookingSelection.centro?.name || "Sin centro",
-        tipo_vehiculo_nombre: tipoVehiculo?.name || "Sin tipo",
+        tipo_vehiculo_nombre: "Pendiente",
         fecha: format(fechaCita, "yyyy-MM-dd"),
         hora_inicio: bookingSelection.horario || "08:00",
         hora_fin: calculateEndTime(bookingSelection.horario || "08:00"),
-        estado: "scheduled",
-        conductor_nombre: formData.conductor_nombre,
-        conductor_telefono: formData.conductor_telefono,
-        placas_vehiculo: formData.placas_vehiculo,
+        estado: "pending_transport",
+        conductor_nombre: "",
+        conductor_telefono: "",
+        placas_vehiculo: "",
         ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
         notas: formData.notas,
       }
 
       // Guardar en base de datos (Google Sheets)
-      await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
+      const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
+
+      // db.create devuelve el item creado directamente, no un objeto {success, id}
+      // Si llegamos aquí sin error, la cita fue creada
+      const createdId = (createdAppointment as Record<string, unknown>)?.id as string || appointmentForCalendar.id
+
+      // Actualizar el ID en el objeto del calendario
+      appointmentForCalendar.id = createdId
+      appointmentForCalendar.numero_cita = `CTA-${createdId.slice(-6)}`
 
       // Agregar al estado local del calendario
       setAppointments(prev => [...prev, appointmentForCalendar as CalendarAppointment])
 
-      toast.success("¡Cita creada!", `La cita ha sido programada exitosamente`)
+      // Intentar enviar email (en segundo plano, no bloquear)
+      const emailHtml = generatePhase1EmailHTML({
+        appointmentId: createdId,
+        proveedorEmail: formData.contacto_email,
+        proveedorNombre: formData.contacto_nombre,
+        fecha: format(fechaCita, "d 'de' MMMM 'de' yyyy", { locale: es }),
+        hora: bookingSelection.horario || "08:00",
+        puerta: bookingSelection.puerta?.name || "",
+        centro: bookingSelection.centro?.name || "",
+        token: appointmentToken,
+      })
 
-      // Resetear y volver al calendario
-      setBookingStep(1)
-      setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
-      setActiveTab("calendar")
+      // Enviar email en segundo plano (no esperar resultado)
+      sendEmail({
+        to: formData.contacto_email,
+        subject: `Cita Programada - CEDI ${bookingSelection.centro?.name} - ${format(fechaCita, "dd/MM/yyyy")}`,
+        body: `Su cita ha sido programada. Complete los datos de transporte en: ${transportLink}`,
+        html: emailHtml,
+      }).then(emailResult => {
+        if (emailResult.success) {
+          console.log("✅ Email enviado exitosamente")
+        } else {
+          console.warn("⚠️ No se pudo enviar el email:", emailResult.error)
+        }
+      }).catch(err => {
+        console.warn("⚠️ Error enviando email:", err)
+      })
+
+      // Mostrar información del enlace de transporte
+      setCreatedAppointmentInfo({
+        token: appointmentToken,
+        transportLink,
+        email: formData.contacto_email,
+        proveedorNombre: proveedor?.name || formData.contacto_nombre,
+      })
+
+      toast.success("¡Cita creada!", "La cita ha sido programada exitosamente")
     } catch (error) {
       console.error("Error creando cita:", error)
       toast.error("Error", "No se pudo crear la cita")
@@ -201,24 +253,96 @@ export function AppointmentsPage() {
     }
   }
 
+  // Cerrar el modal de información de cita creada
+  const handleCloseCreatedInfo = () => {
+    setCreatedAppointmentInfo(null)
+    setBookingStep(1)
+    setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
+    setActiveTab("calendar")
+  }
+
+  // Copiar enlace al portapapeles
+  const copyTransportLink = async () => {
+    if (createdAppointmentInfo?.transportLink) {
+      try {
+        await navigator.clipboard.writeText(createdAppointmentInfo.transportLink)
+        toast.success("Copiado", "El enlace ha sido copiado al portapapeles")
+      } catch {
+        toast.error("Error", "No se pudo copiar el enlace")
+      }
+    }
+  }
+
   // Manejar cambio de estado de cita
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
-      await db.update("appointments", appointmentId, { estado: newStatus } as unknown as Record<string, unknown>)
-      
-      setAppointments(prev => 
-        prev.map(apt => 
-          apt.id === appointmentId ? { ...apt, estado: newStatus } : apt
-        )
-      )
-
-      const statusLabels: Record<string, string> = {
-        cancelled: "Cita cancelada",
-        receiving_started: "Recepción iniciada",
-        receiving_finished: "Recepción finalizada",
+      const updateData: Record<string, unknown> = { 
+        "Estado": newStatus 
       }
 
-      toast.success("Estado actualizado", statusLabels[newStatus] || "Estado actualizado")
+      // Si se está aprobando, generar código de cita
+      if (newStatus === "approved") {
+        const codigoCita = `CTA-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`
+        updateData["Codigo_Cita"] = codigoCita
+        updateData["fecha_aprobacion"] = new Date().toISOString()
+
+        // Buscar la cita para enviar email de confirmación
+        const appointment = appointments.find(apt => apt.id === appointmentId)
+        if (appointment && appointment.contacto_email) {
+          // Enviar email de confirmación (Fase 3)
+          const { generatePhase3EmailHTML } = await import("@/services/email.service")
+          const emailHtml = generatePhase3EmailHTML({
+            proveedorNombre: appointment.proveedor_nombre,
+            fecha: appointment.fecha,
+            hora: appointment.hora_inicio,
+            puerta: appointment.puerta_nombre,
+            centro: appointment.centro_nombre,
+            codigoCita: codigoCita,
+            vehiculo: appointment.placas_vehiculo || "No especificado",
+            conductor: appointment.conductor_nombre || "No especificado",
+          })
+
+          sendEmail({
+            to: appointment.contacto_email,
+            subject: `✅ Cita Aprobada - Código: ${codigoCita} - CEDI ${appointment.centro_nombre}`,
+            body: `Su cita ha sido aprobada. Código de confirmación: ${codigoCita}`,
+            html: emailHtml,
+          }).then(result => {
+            if (result.success) {
+              console.log("✅ Email de aprobación enviado")
+            }
+          })
+        }
+
+        // Actualizar estado local con el código
+        setAppointments(prev => 
+          prev.map(apt => 
+            apt.id === appointmentId 
+              ? { ...apt, estado: newStatus, codigo_cita: codigoCita } 
+              : apt
+          )
+        )
+        
+        toast.success("¡Cita Aprobada!", `Código generado: ${codigoCita}`)
+      } else {
+        // Actualizar estado local sin código
+        setAppointments(prev => 
+          prev.map(apt => 
+            apt.id === appointmentId ? { ...apt, estado: newStatus } : apt
+          )
+        )
+
+        const statusLabels: Record<string, string> = {
+          cancelled: "Cita cancelada",
+          receiving_started: "Recepción iniciada",
+          receiving_finished: "Recepción finalizada",
+        }
+
+        toast.success("Estado actualizado", statusLabels[newStatus] || "Estado actualizado")
+      }
+
+      // Guardar en base de datos
+      await db.update("appointments", appointmentId, updateData)
     } catch (error) {
       console.error("Error actualizando estado:", error)
       toast.error("Error", "No se pudo actualizar el estado")
@@ -280,7 +404,22 @@ export function AppointmentsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-5">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {appointments.filter(a => a.estado === "pending_transport").length}
+                </p>
+                <p className="text-sm text-muted-foreground">Pend. Transporte</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -289,9 +428,9 @@ export function AppointmentsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "scheduled").length}
+                  {appointments.filter(a => a.estado === "transport_completed" || a.estado === "scheduled").length}
                 </p>
-                <p className="text-sm text-muted-foreground">Programadas</p>
+                <p className="text-sm text-muted-foreground">Listas p/Aprobar</p>
               </div>
             </div>
           </CardContent>
@@ -304,9 +443,9 @@ export function AppointmentsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "receiving_started").length}
+                  {appointments.filter(a => a.estado === "approved" || a.estado === "receiving_started").length}
                 </p>
-                <p className="text-sm text-muted-foreground">En Recepción</p>
+                <p className="text-sm text-muted-foreground">En Proceso</p>
               </div>
             </div>
           </CardContent>
@@ -329,7 +468,7 @@ export function AppointmentsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+              <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
@@ -366,7 +505,79 @@ export function AppointmentsPage() {
         </TabsContent>
 
         <TabsContent value="booking" className="mt-6">
-          {bookingStep === 1 ? (
+          {createdAppointmentInfo ? (
+            // Modal de éxito - Cita creada
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="max-w-2xl mx-auto"
+            >
+              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+                <CardContent className="p-8 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.2 }}
+                  >
+                    <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle className="h-10 w-10 text-green-600" />
+                    </div>
+                  </motion.div>
+                  
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Cita Creada Exitosamente!</h2>
+                  <p className="text-gray-600 mb-6">
+                    Se ha enviado un correo a <strong>{createdAppointmentInfo.email}</strong> con el enlace para completar los datos de transporte.
+                  </p>
+
+                  {/* Enlace de transporte */}
+                  <div className="bg-white rounded-lg border p-4 mb-6">
+                    <p className="text-sm text-gray-500 mb-2">Enlace para datos de transporte:</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-sm bg-gray-100 p-2 rounded text-left overflow-x-auto">
+                        {createdAppointmentInfo.transportLink}
+                      </code>
+                      <Button size="sm" variant="outline" onClick={copyTransportLink}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => window.open(createdAppointmentInfo.transportLink, "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Próximos pasos */}
+                  <div className="bg-blue-50 rounded-lg p-4 text-left mb-6">
+                    <p className="font-medium text-blue-800 mb-2">Próximos pasos:</p>
+                    <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                      <li>El proveedor recibirá el correo con el enlace</li>
+                      <li>Deberá completar los datos del vehículo y conductor</li>
+                      <li>Una vez completados, la cita aparecerá como "Lista para aprobar"</li>
+                      <li>Al aprobar, se generará el código de confirmación final</li>
+                    </ol>
+                  </div>
+
+                  <div className="flex gap-3 justify-center">
+                    <Button variant="outline" onClick={handleCloseCreatedInfo}>
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Ver Calendario
+                    </Button>
+                    <Button onClick={() => {
+                      setCreatedAppointmentInfo(null)
+                      setBookingStep(1)
+                      setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
+                    }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nueva Cita
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : bookingStep === 1 ? (
             <BookingStep1
               centros={centros}
               puertas={puertas}
@@ -375,10 +586,9 @@ export function AppointmentsPage() {
               onSelectionComplete={handleStep1Complete}
             />
           ) : (
-            <BookingStep2
-              selection={bookingSelection}
+            <BookingStep2Phase1
+              bookingSelection={bookingSelection}
               proveedores={proveedores}
-              tiposVehiculo={tiposVehiculo}
               onBack={() => setBookingStep(1)}
               onSubmit={handleCreateAppointment}
               isSubmitting={isSubmitting}

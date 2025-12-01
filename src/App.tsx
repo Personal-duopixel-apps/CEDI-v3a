@@ -25,6 +25,7 @@ import { AppointmentsPage } from "@/pages/scheduling"
 import { DocksPage, VehicleTypesPage, ConnectionTestPage, CentrosDistribucionPage, HorariosPage, DiasFestivosPage } from "@/pages/config"
 import { AuditPage } from "@/pages/AuditPage"
 import { ProfilePage } from "@/pages/ProfilePage"
+import { TransportDataPage } from "@/pages/public/TransportDataPage"
 import { initializeDatabase, isDatabaseReady } from "@/services/database.service"
 import { useAuthStore } from "@/store/auth.store"
 import { databaseConfig } from "@/config/database.config"
@@ -80,6 +81,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/cita/transporte/:token" element={<TransportDataPage />} />
 
         {/* Protected Routes */}
         <Route element={<MainLayout />}>
