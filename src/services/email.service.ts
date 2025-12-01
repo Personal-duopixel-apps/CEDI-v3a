@@ -43,9 +43,10 @@ export function generateAppointmentToken(): string {
 
 /**
  * Genera el enlace para completar datos de transporte
+ * Usa el ID de la cita como identificador
  */
-export function generateTransportLink(token: string): string {
-  return `${APP_BASE_URL}/cita/transporte/${token}`
+export function generateTransportLink(appointmentId: string): string {
+  return `${APP_BASE_URL}/cita/transporte/${appointmentId}`
 }
 
 /**

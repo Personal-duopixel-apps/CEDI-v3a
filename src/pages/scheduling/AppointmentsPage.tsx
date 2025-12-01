@@ -19,7 +19,7 @@ import { useToast } from "@/store/ui.store"
 import { BookingStep1 } from "./components/BookingStep1"
 import { BookingStep2Phase1, type AppointmentFormDataPhase1 } from "./components/BookingStep2Phase1"
 import { CalendarView, type CalendarAppointment } from "./components/CalendarView"
-import { generateAppointmentToken, generateTransportLink, generatePhase1EmailHTML, sendEmail } from "@/services/email.service"
+import { generateTransportLink, generatePhase1EmailHTML, sendEmail } from "@/services/email.service"
 
 interface BookingSelection {
   centro: { id: string; name: string; city?: string } | null
@@ -145,10 +145,6 @@ export function AppointmentsPage() {
         return
       }
 
-      // Generar token único para la cita
-      const appointmentToken = generateAppointmentToken()
-      const transportLink = generateTransportLink(appointmentToken)
-
       // Formato para Google Sheets - columnas exactas de la hoja "citas"
       const fechaCita = bookingSelection.fecha || new Date()
       const newAppointment = {
@@ -162,13 +158,6 @@ export function AppointmentsPage() {
         "Nombre del solicitante": proveedor?.name || "",
         "Laboratorio": proveedor?.name || "",
         "Notas": formData.notas || "",
-        // Nuevos campos para el flujo de 3 fases
-        "Token": appointmentToken,
-        "Estado": "pending_transport", // Fase 1 completada, pendiente de datos de transporte
-        "Contacto_Nombre": formData.contacto_nombre,
-        "Contacto_Email": formData.contacto_email,
-        "Contacto_Telefono": formData.contacto_telefono || "",
-        "Ordenes_Compra": formData.ordenes_compra || "",
         // Campos de transporte vacíos (se llenarán en Fase 2)
         "Vehiculo": "",
         "tipo de vehiculo": "",
@@ -192,6 +181,8 @@ export function AppointmentsPage() {
         placas_vehiculo: "",
         ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
         notas: formData.notas,
+        contacto_email: formData.contacto_email,
+        contacto_nombre: formData.contacto_nombre,
       }
 
       // Guardar en base de datos (Google Sheets)
@@ -200,6 +191,9 @@ export function AppointmentsPage() {
       // db.create devuelve el item creado directamente, no un objeto {success, id}
       // Si llegamos aquí sin error, la cita fue creada
       const createdId = (createdAppointment as Record<string, unknown>)?.id as string || appointmentForCalendar.id
+
+      // Generar el enlace de transporte usando el ID de la cita
+      const transportLink = generateTransportLink(createdId)
 
       // Actualizar el ID en el objeto del calendario
       appointmentForCalendar.id = createdId
@@ -217,7 +211,7 @@ export function AppointmentsPage() {
         hora: bookingSelection.horario || "08:00",
         puerta: bookingSelection.puerta?.name || "",
         centro: bookingSelection.centro?.name || "",
-        token: appointmentToken,
+        token: createdId, // Usamos el ID como identificador
       })
 
       // Enviar email en segundo plano (no esperar resultado)
@@ -238,7 +232,7 @@ export function AppointmentsPage() {
 
       // Mostrar información del enlace de transporte
       setCreatedAppointmentInfo({
-        token: appointmentToken,
+        token: createdId, // Usamos el ID como identificador
         transportLink,
         email: formData.contacto_email,
         proveedorNombre: proveedor?.name || formData.contacto_nombre,
