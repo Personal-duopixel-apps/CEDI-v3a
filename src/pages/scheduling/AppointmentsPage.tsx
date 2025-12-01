@@ -17,8 +17,8 @@ import { BookingStep2, type AppointmentFormData } from "./components/BookingStep
 import { CalendarView, type CalendarAppointment } from "./components/CalendarView"
 
 interface BookingSelection {
-  centro: { id: string; Nombre: string; Ciudad?: string } | null
-  puerta: { id: string; Nombre: string; Tipo?: string } | null
+  centro: { id: string; name: string; city?: string } | null
+  puerta: { id: string; name: string; type?: string } | null
   fecha: Date | null
   horario: string | null
 }
@@ -35,12 +35,12 @@ export function AppointmentsPage() {
   })
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-  // Datos desde Google Sheets
-  const [centros, setCentros] = React.useState<Array<{ id: string; Nombre: string; Ciudad?: string }>>([])
-  const [puertas, setPuertas] = React.useState<Array<{ id: string; Nombre: string; Tipo?: string; Descripción?: string }>>([])
-  const [horarios, setHorarios] = React.useState<Array<{ id: string; Día: string; "Hora Inicio": string; "Hora Fin": string }>>([])
-  const [proveedores, setProveedores] = React.useState<Array<{ id: string; Nombre: string }>>([])
-  const [tiposVehiculo, setTiposVehiculo] = React.useState<Array<{ id: string; Nombre: string }>>([])
+  // Datos desde Google Sheets (con nombres mapeados a inglés)
+  const [centros, setCentros] = React.useState<Array<{ id: string; name: string; city?: string; code?: string }>>([])
+  const [puertas, setPuertas] = React.useState<Array<{ id: string; name: string; type?: string; notes?: string; distribution_center_id?: string }>>([])
+  const [horarios, setHorarios] = React.useState<Array<{ id: string; day: string; start_time: string; end_time: string; dock_id?: string }>>([])
+  const [proveedores, setProveedores] = React.useState<Array<{ id: string; name: string }>>([])
+  const [tiposVehiculo, setTiposVehiculo] = React.useState<Array<{ id: string; name: string }>>([])
   const [appointments, setAppointments] = React.useState<CalendarAppointment[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -57,9 +57,9 @@ export function AppointmentsPage() {
           tiposVehiculoData,
           appointmentsData,
         ] = await Promise.all([
-          db.getAll("distribution_centers"),
+          db.getAll("centros_distribucion"),  // Nombre correcto de la entidad
           db.getAll("docks"),
-          db.getAll("schedules"),
+          db.getAll("horarios"),  // Nombre correcto de la entidad
           db.getAll("suppliers"),
           db.getAll("vehicle_types"),
           db.getAll("appointments"),

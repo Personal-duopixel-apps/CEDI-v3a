@@ -5,34 +5,36 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets - relacionado a Puertas
 interface Horario extends BaseEntity {
-  Nombre: string
-  "Día"?: string
-  "Hora Inicio"?: string
-  "Hora Fin"?: string
-  Descripción?: string
-  Activo?: boolean | string
+  name: string
+  dock_id?: string  // Relación con Puerta
+  day?: string
+  start_time?: string
+  end_time?: string
+  is_available?: boolean | string
+  notes?: string
 }
 
 // Schema de validación
 const horarioSchema = z.object({
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  "Día": optionalString,
-  "Hora Inicio": stringFromAny,
-  "Hora Fin": stringFromAny,
-  Descripción: optionalString,
-  Activo: booleanFromString.optional(),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  dock_id: z.string().optional(),  // ID de la puerta
+  day: optionalString,
+  start_time: stringFromAny,
+  end_time: stringFromAny,
+  is_available: booleanFromString.optional(),
+  notes: optionalString,
 })
 
 // Configuración del CRUD
 const config: CRUDConfig = {
-  entity: "schedules",
+  entity: "horarios",  // Nombre correcto de la entidad
   labels: {
     singular: "Horario",
     plural: "Horarios",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -55,53 +57,46 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla - coinciden con Google Sheet
 const columns: DataTableColumn<Horario>[] = [
-  { 
-    key: "Nombre" as keyof Horario, 
-    label: "Nombre", 
-    sortable: true 
-  },
-  { 
-    key: "Día" as keyof Horario, 
-    label: "Día",
-    render: (value) => value || '-'
-  },
-  { 
-    key: "Hora Inicio" as keyof Horario, 
-    label: "Hora Inicio",
-    render: (value) => value || '-'
-  },
-  { 
-    key: "Hora Fin" as keyof Horario, 
-    label: "Hora Fin",
-    render: (value) => value || '-'
-  },
+  { key: "name", label: "Nombre", sortable: true },
+  { key: "dock_id", label: "Puerta", sortable: true },
+  { key: "day", label: "Día", render: (value) => value || '-' },
+  { key: "start_time", label: "Hora Inicio", render: (value) => value || '-' },
+  { key: "end_time", label: "Hora Fin", render: (value) => value || '-' },
   {
-    key: "Activo" as keyof Horario,
-    label: "Estado",
+    key: "is_available",
+    label: "Disponible",
     render: (value) => {
-      const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
+      const isAvailable = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
       return (
-        <Badge variant={isActive ? "success" : "secondary"}>
-          {isActive ? "Activo" : "Inactivo"}
+        <Badge variant={isAvailable ? "success" : "secondary"}>
+          {isAvailable ? "Sí" : "No"}
         </Badge>
       )
     },
   },
 ]
 
-// Campos del formulario
+// Campos del formulario - con relación a Puerta
 const formFields: FormField[] = [
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Nombre del horario",
   },
   {
-    name: "Día",
+    name: "dock_id",
+    label: "Puerta",
+    type: "select",
+    required: true,
+    placeholder: "Seleccionar puerta...",
+    optionsEntity: "docks",  // Carga opciones dinámicas de puertas
+  },
+  {
+    name: "day",
     label: "Día",
     type: "select",
     placeholder: "Seleccione un día",
@@ -116,29 +111,30 @@ const formFields: FormField[] = [
     ],
   },
   {
-    name: "Hora Inicio",
+    name: "start_time",
     label: "Hora Inicio",
-    type: "text",
+    type: "time",
     placeholder: "Ej: 08:00",
   },
   {
-    name: "Hora Fin",
+    name: "end_time",
     label: "Hora Fin",
-    type: "text",
+    type: "time",
     placeholder: "Ej: 17:00",
   },
   {
-    name: "Descripción",
+    name: "notes",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción del horario",
     className: "sm:col-span-2",
   },
   {
-    name: "Activo",
-    label: "Activo",
+    name: "is_available",
+    label: "Disponible",
     type: "switch",
     defaultValue: true,
+    description: "Indica si este horario está disponible para citas",
   },
 ]
 
@@ -146,12 +142,12 @@ export function HorariosPage() {
   return (
     <CRUDPage<Horario>
       config={config}
-      entityName="schedules"
+      entityName="horarios"
       columns={columns}
       formFields={formFields}
       formSchema={horarioSchema}
-      searchFields={["Nombre", "Día"] as (keyof Horario)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["name", "day", "dock_id"]}
+      defaultValues={{ is_available: true }}
     />
   )
 }

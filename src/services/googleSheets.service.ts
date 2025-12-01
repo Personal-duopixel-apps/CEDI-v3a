@@ -139,7 +139,18 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Notas': 'notes',
   },
   
-  // Puertas
+  // Centros de Distribución
+  centros_distribucion: {
+    'Código': 'code',
+    'Nombre': 'name',
+    'Dirección': 'address',
+    'Ciudad': 'city',
+    'País': 'country',
+    'Zona Horaria': 'timezone',
+    'Activo': 'is_active',
+  },
+  
+  // Puertas - relacionadas a Centro de Distribución
   docks: {
     'ID centro distribucion': 'distribution_center_id',
     'Número de Puerta': 'code',
@@ -155,17 +166,25 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Peso Máximo': 'max_weight',
   },
   
-  // Horarios
+  // Horarios - relacionados a Puertas
   horarios: {
+    'Fecha': 'date',
+    'ID de Puerta': 'dock_id',
     'Día': 'day',
-    'Hora Apertura': 'open_time',
-    'Hora Cierre': 'close_time',
+    'Hora Inicio': 'start_time',
+    'Hora Fin': 'end_time',
+    'Disponible': 'is_available',
+    'Descripción': 'notes',
   },
   
-  // Días Festivos
+  // Días Festivos - relacionados a Centro de Distribución
   dias_festivos: {
+    'ID Centro de Distribución': 'distribution_center_id',
     'Fecha': 'date',
-    'Motivo': 'reason',
+    'Descripción': 'notes',
+    'Es Día Laboral': 'is_working_day',
+    'Hora de Inicio': 'start_time',
+    'Hora de Fin': 'end_time',
   },
   
   // Usuarios

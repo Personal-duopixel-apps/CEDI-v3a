@@ -90,9 +90,10 @@ const formFields: FormField[] = [
   {
     name: "distribution_center_id",
     label: "Centro de Distribución",
-    type: "text",
-    required: false,
-    placeholder: "Ej: CEDI Central",
+    type: "select",
+    required: true,
+    placeholder: "Seleccionar centro...",
+    optionsEntity: "centros_distribucion", // Carga opciones dinámicas
   },
   {
     name: "type",

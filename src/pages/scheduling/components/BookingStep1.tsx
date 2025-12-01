@@ -16,26 +16,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
+// Interfaces con nombres mapeados desde Google Sheets
 interface CentroDistribucion {
   id: string
-  Nombre: string
-  Dirección?: string
-  Ciudad?: string
+  name: string  // Mapeado desde 'Nombre'
+  code?: string
+  address?: string
+  city?: string
+  country?: string
 }
 
 interface Puerta {
   id: string
-  Nombre: string
-  Tipo?: string
-  Descripción?: string
-  "ID centro distribucion"?: string
+  name: string  // Mapeado desde 'Nombre'
+  type?: string
+  notes?: string
+  distribution_center_id?: string  // Mapeado desde 'ID centro distribucion'
 }
 
 interface Horario {
   id: string
-  Día: string
-  "Hora Inicio": string
-  "Hora Fin": string
+  dock_id?: string  // Mapeado desde 'ID de Puerta'
+  day: string
+  start_time: string
+  end_time: string
+  is_available?: boolean
 }
 
 interface TimeSlot {
@@ -81,13 +86,13 @@ export function BookingStep1({
   // Filtrar puertas por centro seleccionado
   const puertasFiltradas = React.useMemo(() => {
     if (!selectedCentro) return []
-    // Filtrar puertas que pertenezcan al centro seleccionado (por nombre)
+    // Filtrar puertas que pertenezcan al centro seleccionado
     return puertas.filter(p => {
-      const puertaCentro = p["ID centro distribucion"]
+      const puertaCentro = p.distribution_center_id
       // Si la puerta no tiene centro asignado, no la mostramos
       if (!puertaCentro) return false
-      // Comparar por nombre del centro
-      return puertaCentro === selectedCentro.Nombre
+      // Comparar por nombre del centro (el Google Sheet guarda el nombre, no el ID)
+      return puertaCentro === selectedCentro.name || puertaCentro === selectedCentro.id
     })
   }, [selectedCentro, puertas])
 
@@ -101,15 +106,17 @@ export function BookingStep1({
     if (!selectedPuerta || !selectedDate) return []
 
     const dayName = format(selectedDate, "EEEE", { locale: es })
+    // Buscar horarios que pertenezcan a la puerta seleccionada y coincidan con el día
     const dayHorario = horarios.find(h => 
-      h.Día?.toLowerCase() === dayName.toLowerCase()
+      h.day?.toLowerCase() === dayName.toLowerCase() &&
+      (!h.dock_id || h.dock_id === selectedPuerta.id || h.dock_id === selectedPuerta.name)
     )
 
     if (!dayHorario) return []
 
     const slots: TimeSlot[] = []
-    const startHour = parseInt(dayHorario["Hora Inicio"]?.split(":")[0] || "8")
-    const endHour = parseInt(dayHorario["Hora Fin"]?.split(":")[0] || "17")
+    const startHour = parseInt(dayHorario.start_time?.split(":")[0] || "8")
+    const endHour = parseInt(dayHorario.end_time?.split(":")[0] || "17")
 
     for (let hour = startHour; hour < endHour; hour++) {
       const timeStr = `${hour.toString().padStart(2, "0")}:00`
@@ -221,11 +228,11 @@ export function BookingStep1({
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold truncate">{centro.Nombre}</h4>
-                    {centro.Ciudad && (
+                    <h4 className="font-semibold truncate">{centro.name}</h4>
+                    {centro.city && (
                       <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                         <MapPin className="h-3 w-3" />
-                        {centro.Ciudad}
+                        {centro.city}
                       </p>
                     )}
                   </div>
@@ -280,10 +287,10 @@ export function BookingStep1({
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-semibold">{puerta.Nombre}</h4>
-                            {puerta.Tipo && (
+                            <h4 className="font-semibold">{puerta.name}</h4>
+                            {puerta.type && (
                               <Badge variant="outline" className="mt-1">
-                                {puerta.Tipo}
+                                {puerta.type}
                               </Badge>
                             )}
                           </div>
@@ -336,7 +343,7 @@ export function BookingStep1({
                     const isPast = day < new Date() && !isToday
                     const dayName = format(day, "EEEE", { locale: es })
                     const hasSchedule = horarios.some(h => 
-                      h.Día?.toLowerCase() === dayName.toLowerCase()
+                      h.day?.toLowerCase() === dayName.toLowerCase()
                     )
 
                     return (
@@ -447,11 +454,11 @@ export function BookingStep1({
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       <span className="flex items-center gap-1">
                         <Building2 className="h-4 w-4" />
-                        {selectedCentro?.Nombre}
+                        {selectedCentro?.name}
                       </span>
                       <span className="flex items-center gap-1">
                         <DoorOpen className="h-4 w-4" />
-                        {selectedPuerta?.Nombre}
+                        {selectedPuerta?.name}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />

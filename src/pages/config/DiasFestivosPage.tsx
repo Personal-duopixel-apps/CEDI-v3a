@@ -5,32 +5,36 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets - relacionado a Centro de Distribución
 interface DiaFestivo extends BaseEntity {
-  Nombre: string
-  Fecha?: string
-  Descripción?: string
-  Anual?: boolean | string
-  Activo?: boolean | string
+  name: string
+  distribution_center_id?: string  // Relación con Centro
+  date?: string
+  notes?: string
+  is_working_day?: boolean | string
+  start_time?: string
+  end_time?: string
 }
 
 // Schema de validación
 const festivoSchema = z.object({
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Fecha: stringFromAny,
-  Descripción: optionalString,
-  Anual: booleanFromString.optional(),
-  Activo: booleanFromString.optional(),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  distribution_center_id: z.string().optional(),
+  date: stringFromAny,
+  notes: optionalString,
+  is_working_day: booleanFromString.optional(),
+  start_time: optionalString,
+  end_time: optionalString,
 })
 
 // Configuración del CRUD
 const config: CRUDConfig = {
-  entity: "holidays",
+  entity: "dias_festivos",  // Nombre correcto de la entidad
   labels: {
     singular: "Día Festivo",
     plural: "Días Festivos",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -53,83 +57,77 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla - coinciden con Google Sheet
 const columns: DataTableColumn<DiaFestivo>[] = [
-  { 
-    key: "Nombre" as keyof DiaFestivo, 
-    label: "Nombre", 
-    sortable: true 
-  },
-  { 
-    key: "Fecha" as keyof DiaFestivo, 
-    label: "Fecha",
-    sortable: true,
-    render: (value) => value || '-'
-  },
-  { 
-    key: "Descripción" as keyof DiaFestivo, 
-    label: "Descripción",
-    render: (value) => value || '-'
-  },
+  { key: "name", label: "Nombre", sortable: true },
+  { key: "distribution_center_id", label: "Centro", sortable: true },
+  { key: "date", label: "Fecha", sortable: true, render: (value) => value || '-' },
+  { key: "notes", label: "Descripción", render: (value) => value || '-' },
   {
-    key: "Anual" as keyof DiaFestivo,
-    label: "Anual",
+    key: "is_working_day",
+    label: "Día Laboral",
     render: (value) => {
-      const isAnual = value === true || value === 'TRUE' || value === 'true' || value === 'Sí'
+      const isWorkingDay = value === true || value === 'TRUE' || value === 'true' || value === 'Sí'
       return (
-        <Badge variant={isAnual ? "default" : "outline"}>
-          {isAnual ? "Sí" : "No"}
+        <Badge variant={isWorkingDay ? "default" : "outline"}>
+          {isWorkingDay ? "Sí" : "No"}
         </Badge>
       )
     },
   },
-  {
-    key: "Activo" as keyof DiaFestivo,
-    label: "Estado",
-    render: (value) => {
-      const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
-      return (
-        <Badge variant={isActive ? "success" : "secondary"}>
-          {isActive ? "Activo" : "Inactivo"}
-        </Badge>
-      )
-    },
-  },
+  { key: "start_time", label: "Hora Inicio", render: (value) => value || '-' },
+  { key: "end_time", label: "Hora Fin", render: (value) => value || '-' },
 ]
 
-// Campos del formulario
+// Campos del formulario - con relación a Centro de Distribución
 const formFields: FormField[] = [
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Nombre del día festivo",
   },
   {
-    name: "Fecha",
+    name: "distribution_center_id",
+    label: "Centro de Distribución",
+    type: "select",
+    required: true,
+    placeholder: "Seleccionar centro...",
+    optionsEntity: "centros_distribucion",  // Carga opciones dinámicas
+  },
+  {
+    name: "date",
     label: "Fecha",
     type: "date",
+    required: true,
     placeholder: "Seleccione la fecha",
   },
   {
-    name: "Descripción",
+    name: "notes",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción del día festivo",
     className: "sm:col-span-2",
   },
   {
-    name: "Anual",
-    label: "Se repite anualmente",
+    name: "is_working_day",
+    label: "Es día laboral (horario especial)",
     type: "switch",
-    defaultValue: true,
+    defaultValue: false,
+    description: "Si está activo, indica que hay operaciones con horario especial",
   },
   {
-    name: "Activo",
-    label: "Activo",
-    type: "switch",
-    defaultValue: true,
+    name: "start_time",
+    label: "Hora Inicio (si es laboral)",
+    type: "time",
+    placeholder: "Ej: 08:00",
+  },
+  {
+    name: "end_time",
+    label: "Hora Fin (si es laboral)",
+    type: "time",
+    placeholder: "Ej: 14:00",
   },
 ]
 
@@ -137,12 +135,12 @@ export function DiasFestivosPage() {
   return (
     <CRUDPage<DiaFestivo>
       config={config}
-      entityName="holidays"
+      entityName="dias_festivos"
       columns={columns}
       formFields={formFields}
       formSchema={festivoSchema}
-      searchFields={["Nombre", "Fecha"] as (keyof DiaFestivo)[]}
-      defaultValues={{ Activo: true, Anual: true }}
+      searchFields={["name", "date"]}
+      defaultValues={{ is_working_day: false }}
     />
   )
 }

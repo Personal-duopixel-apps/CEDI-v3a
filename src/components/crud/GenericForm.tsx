@@ -16,7 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { FormSkeleton } from "@/components/ui/skeleton"
-import type { FormField } from "@/types"
+import { db } from "@/services/database.service"
+import type { FormField, BaseEntity } from "@/types"
 
 interface GenericFormProps<T extends FieldValues> {
   fields: FormField[]
@@ -30,6 +31,9 @@ interface GenericFormProps<T extends FieldValues> {
   className?: string
 }
 
+// Cache de opciones dinámicas
+const optionsCache: Record<string, { value: string; label: string }[]> = {}
+
 export function GenericForm<T extends FieldValues>({
   fields,
   schema,
@@ -42,11 +46,52 @@ export function GenericForm<T extends FieldValues>({
   className,
 }: GenericFormProps<T>) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [dynamicOptions, setDynamicOptions] = React.useState<Record<string, { value: string; label: string }[]>>({})
 
   const form = useForm<T>({
     resolver: zodResolver(schema),
     defaultValues,
   })
+
+  // Cargar opciones dinámicas de otras entidades
+  React.useEffect(() => {
+    const loadDynamicOptions = async () => {
+      const fieldsWithEntity = fields.filter(f => f.optionsEntity)
+      
+      for (const field of fieldsWithEntity) {
+        if (!field.optionsEntity) continue
+        
+        // Usar cache si está disponible
+        if (optionsCache[field.optionsEntity]) {
+          setDynamicOptions(prev => ({
+            ...prev,
+            [field.name]: optionsCache[field.optionsEntity!]
+          }))
+          continue
+        }
+        
+        try {
+          const items = await db.getAll<BaseEntity>(field.optionsEntity)
+          const options = items.map(item => ({
+            value: String(item.id || item.name || item.Nombre || ''),
+            label: String(item.name || item.Nombre || item.Codigo || item.Código || item.id || '')
+          }))
+          
+          // Guardar en cache
+          optionsCache[field.optionsEntity] = options
+          
+          setDynamicOptions(prev => ({
+            ...prev,
+            [field.name]: options
+          }))
+        } catch (error) {
+          console.error(`Error cargando opciones de ${field.optionsEntity}:`, error)
+        }
+      }
+    }
+    
+    loadDynamicOptions()
+  }, [fields])
 
   const handleSubmit = async (data: T) => {
     try {
@@ -59,6 +104,14 @@ export function GenericForm<T extends FieldValues>({
 
   if (loading) {
     return <FormSkeleton fields={fields.length} />
+  }
+  
+  // Combinar opciones estáticas y dinámicas
+  const getFieldOptions = (field: FormField) => {
+    if (field.optionsEntity && dynamicOptions[field.name]) {
+      return dynamicOptions[field.name]
+    }
+    return field.options || []
   }
 
   const renderField = (field: FormField) => {
@@ -114,7 +167,7 @@ export function GenericForm<T extends FieldValues>({
               <SelectValue placeholder={field.placeholder || "Seleccionar..."} />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map((option) => (
+              {getFieldOptions(field).map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

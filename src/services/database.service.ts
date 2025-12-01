@@ -18,6 +18,10 @@ import { loadSheetData } from './googleSheets.service'
 
 /**
  * Sincroniza operaciones CRUD con Google Apps Script
+ * 
+ * Google Apps Script requiere un enfoque especial para CORS:
+ * - Usar 'text/plain' como Content-Type para evitar preflight
+ * - Seguir redirecciones automáticamente
  */
 async function syncWithGoogleSheets(
   action: 'create' | 'update' | 'delete',
@@ -32,24 +36,46 @@ async function syncWithGoogleSheets(
     return { success: true }
   }
 
+  // Obtener el nombre de la hoja correcta para la entidad
+  const sheetName = ENTITY_TO_SHEET[entity] || entity
+
   try {
+    const requestBody = {
+      action,
+      entity: sheetName, // Usar el nombre de la hoja en Google Sheets
+      payload,
+      id,
+    }
+
+    console.log(`🔄 Sincronizando con Google Sheets: ${action} ${entity} → ${sheetName}`, requestBody)
+
+    // Usar text/plain para evitar preflight CORS
     const response = await fetch(appsScriptUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain;charset=utf-8',
       },
-      body: JSON.stringify({
-        action,
-        entity,
-        payload,
-        id,
-      }),
-      mode: 'no-cors', // Google Apps Script requiere esto
+      body: JSON.stringify(requestBody),
+      redirect: 'follow',
     })
 
-    // Con no-cors no podemos leer la respuesta, asumimos éxito
-    console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`)
-    return { success: true }
+    // Intentar leer la respuesta
+    if (response.ok) {
+      try {
+        const result = await response.json()
+        console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`, result)
+        return { success: result.success !== false }
+      } catch {
+        // Si no podemos parsear JSON, asumimos éxito
+        console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`)
+        return { success: true }
+      }
+    } else {
+      // Si hay error HTTP, intentar leer el mensaje
+      const errorText = await response.text()
+      console.error(`❌ Error HTTP ${response.status}:`, errorText)
+      return { success: false, error: errorText }
+    }
   } catch (error) {
     console.error('❌ Error sincronizando con Google Sheets:', error)
     return { 
@@ -128,7 +154,7 @@ class DatabaseService {
       
       try {
         // Cargar todas las entidades desde Google Sheets
-        for (const [entity, sheetName] of Object.entries(ENTITY_TO_SHEET)) {
+        for (const [entity] of Object.entries(ENTITY_TO_SHEET)) {
           await this.loadFromGoogleSheets(entity)
         }
         
