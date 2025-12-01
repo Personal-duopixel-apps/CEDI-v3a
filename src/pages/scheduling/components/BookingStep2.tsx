@@ -31,20 +31,20 @@ import {
 } from "@/components/ui/select"
 
 interface BookingSelection {
-  centro: { id: string; Nombre: string } | null
-  puerta: { id: string; Nombre: string } | null
+  centro: { id: string; name: string } | null
+  puerta: { id: string; name: string } | null
   fecha: Date | null
   horario: string | null
 }
 
 interface Proveedor {
   id: string
-  Nombre: string
+  name: string
 }
 
 interface TipoVehiculo {
   id: string
-  Nombre: string
+  name: string
 }
 
 interface BookingStep2Props {
@@ -89,6 +89,12 @@ export function BookingStep2({
   const proveedorId = watch("proveedor_id")
   const tipoVehiculoId = watch("tipo_vehiculo_id")
 
+  // Debug: Log de datos recibidos
+  React.useEffect(() => {
+    console.log("📦 BookingStep2 - Proveedores recibidos:", JSON.stringify(proveedores, null, 2))
+    console.log("🚗 BookingStep2 - Tipos de vehículo recibidos:", JSON.stringify(tiposVehiculo, null, 2))
+  }, [proveedores, tiposVehiculo])
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -101,11 +107,11 @@ export function BookingStep2({
           <div className="flex flex-wrap items-center gap-6 text-sm">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-primary" />
-              <span className="font-medium">{selection.centro?.Nombre}</span>
+              <span className="font-medium">{selection.centro?.name}</span>
             </div>
             <div className="flex items-center gap-2">
               <DoorOpen className="h-4 w-4 text-primary" />
-              <span className="font-medium">{selection.puerta?.Nombre}</span>
+              <span className="font-medium">{selection.puerta?.name}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-primary" />
@@ -135,18 +141,20 @@ export function BookingStep2({
               <div className="space-y-2">
                 <Label htmlFor="proveedor">Proveedor *</Label>
                 <Select
-                  value={proveedorId}
+                  value={proveedorId || ""}
                   onValueChange={(value) => setValue("proveedor_id", value)}
                 >
                   <SelectTrigger className={errors.proveedor_id ? "border-red-500" : ""}>
                     <SelectValue placeholder="Seleccionar proveedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {proveedores.map((prov) => (
-                      <SelectItem key={prov.id} value={prov.id}>
-                        {prov.Nombre}
-                      </SelectItem>
-                    ))}
+                    {proveedores
+                      .filter((prov) => prov.id && prov.name)
+                      .map((prov) => (
+                        <SelectItem key={prov.id} value={String(prov.id)}>
+                          {prov.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 {errors.proveedor_id && (
@@ -157,18 +165,20 @@ export function BookingStep2({
               <div className="space-y-2">
                 <Label htmlFor="tipo_vehiculo">Tipo de Vehículo *</Label>
                 <Select
-                  value={tipoVehiculoId}
+                  value={tipoVehiculoId || ""}
                   onValueChange={(value) => setValue("tipo_vehiculo_id", value)}
                 >
                   <SelectTrigger className={errors.tipo_vehiculo_id ? "border-red-500" : ""}>
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposVehiculo.map((tipo) => (
-                      <SelectItem key={tipo.id} value={tipo.id}>
-                        {tipo.Nombre}
-                      </SelectItem>
-                    ))}
+                    {tiposVehiculo
+                      .filter((tipo) => tipo.id && tipo.name)
+                      .map((tipo) => (
+                        <SelectItem key={tipo.id} value={String(tipo.id)}>
+                          {tipo.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 {errors.tipo_vehiculo_id && (

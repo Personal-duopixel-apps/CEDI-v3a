@@ -1,26 +1,26 @@
 import { z } from "zod"
 import { CRUDPage } from "@/components/crud/CRUDPage"
 import { Badge } from "@/components/ui/badge"
-import { booleanFromString, optionalString, numberFromString } from "@/lib/schema-helpers"
+import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-helpers"
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo de vehículo basado en Google Sheets
+// Tipo de vehículo basado en Google Sheets (nombres mapeados)
 interface VehicleType extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Descripción?: string
-  'Peso (ton)'?: number
-  Activo?: boolean | string
+  code?: string
+  name: string
+  description?: string
+  max_weight?: string | number  // Peso (ton) mapeado
+  is_active?: boolean | string
 }
 
 // Schema de validación
 const vehicleTypeSchema = z.object({
-  Codigo: optionalString,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Descripción: optionalString,
-  'Peso (ton)': numberFromString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  description: optionalString,
+  max_weight: stringFromAny,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
@@ -30,7 +30,7 @@ const config: CRUDConfig = {
     singular: "Tipo de Vehículo",
     plural: "Tipos de Vehículo",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -53,31 +53,31 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<VehicleType>[] = [
   { 
-    key: "Codigo" as keyof VehicleType, 
+    key: "code", 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof VehicleType, 
+    key: "name", 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Descripción" as keyof VehicleType, 
+    key: "description", 
     label: "Descripción",
     render: (value) => value || '-'
   },
   { 
-    key: "Peso (ton)" as keyof VehicleType, 
+    key: "max_weight", 
     label: "Peso (ton)",
     render: (value) => value ? `${value} ton` : '-'
   },
   {
-    key: "Activo" as keyof VehicleType,
+    key: "is_active",
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -90,51 +90,38 @@ const columns: DataTableColumn<VehicleType>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
     placeholder: "Ej: CAM-01",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Ej: Camión 3.5 Toneladas",
   },
   {
-    name: "Descripcion",
+    name: "description",
     label: "Descripción",
     type: "textarea",
     placeholder: "Descripción del tipo de vehículo",
     className: "sm:col-span-2",
   },
   {
-    name: "Capacidad Peso",
-    label: "Capacidad de Peso (kg)",
-    type: "number",
-    min: 0,
-    placeholder: "3500",
-  },
-  {
-    name: "Capacidad Volumen",
-    label: "Capacidad de Volumen (m³)",
+    name: "max_weight",
+    label: "Peso (ton)",
     type: "number",
     min: 0,
     step: 0.1,
-    placeholder: "15.5",
+    placeholder: "3.5",
   },
   {
-    name: "Requiere Refrigeracion",
-    label: "Requiere Refrigeración",
-    type: "switch",
-    defaultValue: false,
-  },
-  {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -149,8 +136,8 @@ export function VehicleTypesPage() {
       columns={columns}
       formFields={formFields}
       formSchema={vehicleTypeSchema}
-      searchFields={["Codigo", "Nombre"] as (keyof VehicleType)[]}
-      defaultValues={{ Activo: true, 'Requiere Refrigeracion': false }}
+      searchFields={["code", "name"]}
+      defaultValues={{ is_active: true }}
     />
   )
 }

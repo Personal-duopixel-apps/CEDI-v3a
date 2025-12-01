@@ -188,8 +188,10 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
   
   // Tipos de Vehículo
   vehicle_types: {
+    'Código': 'code',
     'Capacidad': 'capacity',
     'Peso Máximo': 'max_weight',
+    'Peso (ton)': 'max_weight',
   },
   
   // Horarios - relacionados a Puertas
