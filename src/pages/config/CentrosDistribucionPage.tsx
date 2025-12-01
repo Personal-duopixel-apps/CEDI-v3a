@@ -5,39 +5,40 @@ import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-h
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
-// Tipo basado en Google Sheets
+// Tipo basado en Google Sheets (nombres mapeados a inglés)
 interface CentroDistribucion extends BaseEntity {
-  Codigo?: string
-  Nombre: string
-  Dirección?: string
-  Ciudad?: string
-  País?: string
-  "Zona Horaria"?: string
-  Email?: string
-  Activo?: boolean | string
+  code?: string
+  name: string
+  address?: string
+  city?: string
+  country?: string
+  timezone?: string
+  phone?: string
+  email?: string
+  is_active?: boolean | string
 }
 
-// Schema de validación
+// Schema de validación (nombres mapeados)
 const centroSchema = z.object({
-  Codigo: stringFromAny,
-  Nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  Dirección: optionalString,
-  Ciudad: optionalString,
-  País: optionalString,
-  "Zona Horaria": optionalString,
-  Telefono: stringFromAny,
-  Email: optionalString,
-  Activo: booleanFromString.optional(),
+  code: stringFromAny,
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  address: optionalString,
+  city: optionalString,
+  country: optionalString,
+  timezone: optionalString,
+  phone: stringFromAny,
+  email: optionalString,
+  is_active: booleanFromString.optional(),
 })
 
 // Configuración del CRUD
 const config: CRUDConfig = {
-  entity: "distribution_centers",
+  entity: "centros_distribucion",
   labels: {
     singular: "Centro de Distribución",
     plural: "Centros de Distribución",
   },
-  displayField: "Nombre",
+  displayField: "name",
   permissions: {
     create: true,
     read: true,
@@ -60,46 +61,46 @@ const config: CRUDConfig = {
   },
 }
 
-// Columnas de la tabla
+// Columnas de la tabla (usando nombres mapeados)
 const columns: DataTableColumn<CentroDistribucion>[] = [
   { 
-    key: "Codigo" as keyof CentroDistribucion, 
+    key: "code" as keyof CentroDistribucion, 
     label: "Código", 
     sortable: true,
     render: (value) => value || '-'
   },
   { 
-    key: "Nombre" as keyof CentroDistribucion, 
+    key: "name" as keyof CentroDistribucion, 
     label: "Nombre", 
     sortable: true 
   },
   { 
-    key: "Dirección" as keyof CentroDistribucion, 
+    key: "address" as keyof CentroDistribucion, 
     label: "Dirección",
     render: (value) => value || '-'
   },
   { 
-    key: "Ciudad" as keyof CentroDistribucion, 
+    key: "city" as keyof CentroDistribucion, 
     label: "Ciudad",
     render: (value) => value || '-'
   },
   { 
-    key: "País" as keyof CentroDistribucion, 
+    key: "country" as keyof CentroDistribucion, 
     label: "País",
     render: (value) => value || '-'
   },
   { 
-    key: "Zona Horaria" as keyof CentroDistribucion, 
+    key: "timezone" as keyof CentroDistribucion, 
     label: "Zona Horaria",
     render: (value) => value || '-'
   },
   { 
-    key: "Telefono" as keyof CentroDistribucion, 
+    key: "phone" as keyof CentroDistribucion, 
     label: "Teléfono",
     render: (value) => value || '-'
   },
   {
-    key: "Activo" as keyof CentroDistribucion,
+    key: "is_active" as keyof CentroDistribucion,
     label: "Estado",
     render: (value) => {
       const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
@@ -112,60 +113,60 @@ const columns: DataTableColumn<CentroDistribucion>[] = [
   },
 ]
 
-// Campos del formulario
+// Campos del formulario (usando nombres mapeados)
 const formFields: FormField[] = [
   {
-    name: "Codigo",
+    name: "code",
     label: "Código",
     type: "text",
     placeholder: "Código del centro",
   },
   {
-    name: "Nombre",
+    name: "name",
     label: "Nombre",
     type: "text",
     required: true,
     placeholder: "Nombre del centro de distribución",
   },
   {
-    name: "Dirección",
+    name: "address",
     label: "Dirección",
     type: "textarea",
     placeholder: "Dirección completa",
     className: "sm:col-span-2",
   },
   {
-    name: "Ciudad",
+    name: "city",
     label: "Ciudad",
     type: "text",
     placeholder: "Ciudad",
   },
   {
-    name: "País",
+    name: "country",
     label: "País",
     type: "text",
     placeholder: "País",
   },
   {
-    name: "Zona Horaria",
+    name: "timezone",
     label: "Zona Horaria",
     type: "text",
-    placeholder: "Ej: UTC-6",
+    placeholder: "Ej: America/Guatemala",
   },
   {
-    name: "Telefono",
+    name: "phone",
     label: "Teléfono",
     type: "text",
     placeholder: "Teléfono de contacto",
   },
   {
-    name: "Email",
+    name: "email",
     label: "Email",
     type: "email",
     placeholder: "correo@ejemplo.com",
   },
   {
-    name: "Activo",
+    name: "is_active",
     label: "Activo",
     type: "switch",
     defaultValue: true,
@@ -176,12 +177,12 @@ export function CentrosDistribucionPage() {
   return (
     <CRUDPage<CentroDistribucion>
       config={config}
-      entityName="distribution_centers"
+      entityName="centros_distribucion"
       columns={columns}
       formFields={formFields}
       formSchema={centroSchema}
-      searchFields={["Codigo", "Nombre", "Ciudad", "País"] as (keyof CentroDistribucion)[]}
-      defaultValues={{ Activo: true }}
+      searchFields={["code", "name", "city", "country"] as (keyof CentroDistribucion)[]}
+      defaultValues={{ is_active: true }}
     />
   )
 }
