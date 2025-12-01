@@ -1,0 +1,226 @@
+# CEDI Pharma - Sistema de Gestión de Centros de Distribución
+
+Sistema de Gestión de Centros de Distribución (CEDI) para la industria farmacéutica. Una SPA multi-tenant con RBAC completo.
+
+![CEDI Pharma](https://img.shields.io/badge/CEDI-Pharma-8b5cf6?style=for-the-badge)
+![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178c6?style=flat-square)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06b6d4?style=flat-square)
+
+## 🚀 Características
+
+### Módulos del Sistema
+
+- **📦 Catálogo de Productos**: Registro completo con datos logísticos, temperatura, y precios
+- **📅 Gestión de Citas**: Programación de recepciones con andenes y slots de tiempo
+- **🚚 Proveedores**: Gestión de proveedores y compradores asignados
+- **⚙️ Configuración**: Andenes, tipos de vehículo, horarios, días festivos
+- **📊 Reportería**: Exportación de datos en CSV/PDF
+- **🔍 Auditoría**: Registro completo de cambios en el sistema
+
+### Características Técnicas
+
+- ✅ **Multi-tenant**: Soporte para múltiples centros de distribución (RDC)
+- ✅ **RBAC**: Control de acceso basado en roles
+- ✅ **CRUD Genérico**: Componentes reutilizables para operaciones CRUD
+- ✅ **Exportación**: CSV y PDF
+- ✅ **Auditoría**: Log completo de cambios
+- ✅ **Responsive**: Diseño adaptable a móviles y tablets
+- ✅ **Animaciones**: Transiciones fluidas con Framer Motion
+
+## 📋 Requisitos Previos
+
+- Node.js 18.x o superior
+- npm 9.x o superior
+
+## 🛠️ Instalación
+
+```bash
+# Clonar el repositorio
+git clone <repository-url>
+cd cedi-pharma
+
+# Instalar dependencias
+npm install
+
+# Iniciar en modo desarrollo
+npm run dev
+```
+
+El servidor de desarrollo estará disponible en `http://localhost:3000`
+
+## 🔐 Credenciales de Demo
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Super Admin | admin@cedi.com | cedi2024 |
+| Admin Catálogo | catalogo@cedi.com | cedi2024 |
+| Admin Citas | citas@cedi.com | cedi2024 |
+| Proveedor | proveedor@cedi.com | cedi2024 |
+| Seguridad | seguridad@cedi.com | cedi2024 |
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── components/
+│   ├── crud/           # Componentes CRUD genéricos
+│   │   ├── CRUDPage.tsx
+│   │   ├── DataTable.tsx
+│   │   └── GenericForm.tsx
+│   ├── layout/         # Layout principal
+│   │   ├── MainLayout.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── Header.tsx
+│   └── ui/             # Componentes UI base
+├── pages/
+│   ├── catalog/        # Módulo de Catálogo
+│   ├── suppliers/      # Módulo de Proveedores
+│   ├── scheduling/     # Módulo de Citas
+│   └── config/         # Módulo de Configuración
+├── services/
+│   ├── database.service.ts  # Servicio de base de datos
+│   └── seed.service.ts      # Datos de demostración
+├── store/
+│   ├── auth.store.ts   # Estado de autenticación
+│   └── ui.store.ts     # Estado de UI
+├── types/              # Tipos TypeScript
+└── lib/                # Utilidades
+```
+
+## 🎨 Componentes CRUD Genéricos
+
+El sistema incluye componentes reutilizables para operaciones CRUD:
+
+### CRUDPage
+
+```tsx
+import { CRUDPage } from '@/components/crud/CRUDPage'
+
+<CRUDPage
+  config={crudConfig}
+  entityName="products"
+  columns={tableColumns}
+  formFields={formFields}
+  formSchema={zodSchema}
+  searchFields={['name', 'sku']}
+/>
+```
+
+### DataTable
+
+Tabla configurable con:
+- Búsqueda global
+- Ordenamiento por columnas
+- Selección múltiple
+- Paginación
+- Acciones por fila (Ver, Editar, Eliminar)
+
+### GenericForm
+
+Formulario dinámico que soporta:
+- Campos de texto, número, email
+- Selects y switches
+- Campos de fecha y hora
+- Validación con Zod
+
+## 🗄️ Base de Datos
+
+El sistema usa localStorage como almacenamiento demo, pero está diseñado para conectarse fácilmente a:
+
+- **Google Sheets API**: Ideal para administración fácil desde WeWeb
+- **MySQL**: Para producción con mayor volumen
+- **Supabase/Firebase**: Para aplicaciones en tiempo real
+
+### Configurar Adaptador
+
+```typescript
+import { db } from '@/services/database.service'
+
+db.configure({
+  adapter: 'google-sheets',
+  sheetsApiKey: 'YOUR_API_KEY',
+  spreadsheetId: 'YOUR_SPREADSHEET_ID'
+})
+```
+
+## 🔒 Roles y Permisos
+
+| Rol | Permisos |
+|-----|----------|
+| superadmin | Acceso total |
+| admin | CRUD en su RDC |
+| scheduling-admin | Gestión de citas |
+| catalog-admin | Gestión de productos |
+| supplier-admin | Sus citas y usuarios |
+| supplier-user | Solo sus citas |
+| security | Lectura de llegadas |
+
+## 🎯 Flujo de Citas
+
+```
+SCHEDULED → PENDING_TRANSPORT_DATA → COMPLETE → RECEIVING_STARTED → RECEIVING_FINISHED
+    │                   │
+    ▼                   ▼
+CANCELLED         DID_NOT_SHOW
+```
+
+## 📤 Exportación de Datos
+
+```typescript
+import { exportToCSV } from '@/lib/utils'
+
+exportToCSV(data, 'productos_export', [
+  { key: 'sku', label: 'SKU' },
+  { key: 'name', label: 'Nombre' },
+  { key: 'price', label: 'Precio' }
+])
+```
+
+## 🎨 Paleta de Colores
+
+| Módulo | Color Primario |
+|--------|----------------|
+| Dashboard | Blue |
+| Catálogo | Emerald |
+| Citas | Purple |
+| Proveedores | Green |
+| Seguridad | Red |
+| Reportería | Cyan |
+
+## 🛡️ Integración con WeWeb
+
+Este sistema está diseñado para integrarse fácilmente con WeWeb:
+
+1. **Autenticación**: Sistema simple de usuario/contraseña
+2. **Base de datos**: Compatible con Google Sheets o Supabase
+3. **API REST**: Endpoints predecibles para CRUD
+4. **Eventos**: Sistema de notificaciones para webhooks
+
+## 📝 Scripts Disponibles
+
+```bash
+npm run dev      # Servidor de desarrollo
+npm run build    # Build de producción
+npm run preview  # Preview del build
+npm run lint     # Verificar linting
+```
+
+## 🔄 Próximas Características
+
+- [ ] Integración con Google Sheets API
+- [ ] Notificaciones por email (SendGrid)
+- [ ] Módulo de reportería avanzada
+- [ ] Exportación a PDF
+- [ ] Modo offline con Service Workers
+- [ ] Dashboard con gráficas en tiempo real
+
+## 📄 Licencia
+
+MIT © 2024 CEDI Pharma
+
+---
+
+Desarrollado con ❤️ para la industria farmacéutica
+
+

@@ -1,0 +1,6 @@
+export { DocksPage } from './DocksPage'
+export { VehicleTypesPage } from './VehicleTypesPage'
+export { ConnectionTestPage } from './ConnectionTestPage'
+export { CentrosDistribucionPage } from './CentrosDistribucionPage'
+export { HorariosPage } from './HorariosPage'
+export { DiasFestivosPage } from './DiasFestivosPage'
