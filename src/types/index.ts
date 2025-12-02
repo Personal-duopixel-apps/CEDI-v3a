@@ -355,6 +355,9 @@ export interface FormField {
   // Para selects/combobox
   options?: { value: string; label: string }[]
   optionsEntity?: string  // Nombre de la entidad para cargar opciones dinámicas
+  // Para campos dependientes (select dinámico basado en otro campo)
+  dependsOn?: string  // Nombre del campo del que depende
+  getOptions?: (dependsOnValue: string) => { value: string; label: string }[]  // Función para obtener opciones dinámicas
   // Validación
   validation?: {
     pattern?: RegExp

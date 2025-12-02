@@ -112,14 +112,81 @@ export function GenericForm<T extends FieldValues>({
   
   // Combinar opciones estáticas y dinámicas
   const getFieldOptions = (field: FormField) => {
+    // Si el campo depende de otro campo, usar getOptions con el valor del campo padre
+    if (field.dependsOn && field.getOptions) {
+      const dependsOnValue = form.watch(field.dependsOn as Path<T>) as string
+      if (dependsOnValue) {
+        return field.getOptions(dependsOnValue)
+      }
+      return []
+    }
+    
     if (field.optionsEntity && dynamicOptions[field.name]) {
       return dynamicOptions[field.name]
     }
     return field.options || []
   }
 
+  // Componente para campos select con dependencia (para re-render cuando cambia el padre)
+  const DependentSelect = ({ field }: { field: FormField }) => {
+    const dependsOnValue = form.watch(field.dependsOn as Path<T>) as string
+    const options = React.useMemo(() => {
+      if (field.getOptions && dependsOnValue) {
+        return field.getOptions(dependsOnValue)
+      }
+      return []
+    }, [dependsOnValue, field])
+    
+    const currentValue = form.watch(field.name as Path<T>) as string
+    const error = form.formState.errors[field.name as Path<T>]?.message as string | undefined
+    const isDisabled = disabled || field.disabled || !dependsOnValue
+    
+    // Limpiar el valor si el padre cambia y el valor actual no está en las nuevas opciones
+    React.useEffect(() => {
+      if (currentValue && options.length > 0) {
+        const valueExists = options.some(opt => opt.value === currentValue)
+        if (!valueExists) {
+          form.setValue(field.name as Path<T>, '' as T[keyof T])
+        }
+      }
+    }, [dependsOnValue, options, currentValue])
+    
+    return (
+      <div className={cn("space-y-2", field.className)}>
+        <Label htmlFor={field.name} required={field.required}>
+          {field.label}
+        </Label>
+        <Select
+          value={currentValue || ''}
+          onValueChange={(value) => form.setValue(field.name as Path<T>, value as T[keyof T])}
+          disabled={isDisabled}
+        >
+          <SelectTrigger className={cn(error && "border-destructive")}>
+            <SelectValue placeholder={!dependsOnValue ? "Primero seleccione el país..." : (field.placeholder || "Seleccionar...")} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {field.description && (
+          <p className="text-xs text-muted-foreground">{field.description}</p>
+        )}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    )
+  }
+
   const renderField = (field: FormField) => {
     if (field.hidden) return null
+
+    // Si es un campo dependiente, usar el componente especial
+    if (field.dependsOn && field.getOptions) {
+      return <DependentSelect key={field.name} field={field} />
+    }
 
     const error = form.formState.errors[field.name as Path<T>]?.message as string | undefined
     const isDisabled = disabled || field.disabled
