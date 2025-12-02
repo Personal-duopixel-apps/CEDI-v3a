@@ -144,7 +144,13 @@ const SHEET_SPECIFIC_MAPPINGS = {
     'notes': 'Descripción',
   },
   'horarios': {
-    'notes': 'Notas',
+    'name': 'Nombre',
+    'dock_id': 'Puerta',
+    'day': 'Día',
+    'start_time': 'Hora Inicio',
+    'end_time': 'Hora Fin',
+    'is_available': 'Disponible',
+    'notes': 'Descripción',
   },
   'dias festivos': {
     'notes': 'Notas',

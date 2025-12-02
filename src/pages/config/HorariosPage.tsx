@@ -57,13 +57,24 @@ const config: CRUDConfig = {
   },
 }
 
+// Función para formatear hora con AM/PM
+const formatTimeWithAmPm = (time: string | undefined): string => {
+  if (!time) return '-'
+  const [hourStr, minutes] = time.split(':')
+  const hour = parseInt(hourStr, 10)
+  if (isNaN(hour)) return time
+  const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  return `${hour12}:${minutes || '00'} ${ampm}`
+}
+
 // Columnas de la tabla - coinciden con Google Sheet
 const columns: DataTableColumn<Horario>[] = [
   { key: "name", label: "Nombre", sortable: true },
   { key: "dock_id", label: "Puerta", sortable: true },
   { key: "day", label: "Día", render: (value) => value || '-' },
-  { key: "start_time", label: "Hora Inicio", render: (value) => value || '-' },
-  { key: "end_time", label: "Hora Fin", render: (value) => value || '-' },
+  { key: "start_time", label: "Hora Inicio", render: (value) => formatTimeWithAmPm(value as string) },
+  { key: "end_time", label: "Hora Fin", render: (value) => formatTimeWithAmPm(value as string) },
   {
     key: "is_available",
     label: "Disponible",
@@ -78,6 +89,31 @@ const columns: DataTableColumn<Horario>[] = [
   },
 ]
 
+// Generar opciones de hora con AM/PM
+const generateTimeOptions = () => {
+  const options = []
+  for (let hour = 5; hour <= 22; hour++) {
+    const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hourStr = hour.toString()
+    const displayHour = hour12.toString()
+    
+    // Hora en punto
+    options.push({
+      value: `${hourStr}:00`,
+      label: `${displayHour}:00 ${ampm}`
+    })
+    // Media hora
+    options.push({
+      value: `${hourStr}:30`,
+      label: `${displayHour}:30 ${ampm}`
+    })
+  }
+  return options
+}
+
+const timeOptions = generateTimeOptions()
+
 // Campos del formulario - con relación a Puerta
 const formFields: FormField[] = [
   {
@@ -86,6 +122,7 @@ const formFields: FormField[] = [
     type: "text",
     required: true,
     placeholder: "Nombre del horario",
+    className: "sm:col-span-2",  // Ocupa el 100% del ancho
   },
   {
     name: "dock_id",
@@ -113,14 +150,16 @@ const formFields: FormField[] = [
   {
     name: "start_time",
     label: "Hora Inicio",
-    type: "time",
-    placeholder: "Ej: 08:00",
+    type: "select",
+    placeholder: "Seleccione hora de inicio",
+    options: timeOptions,
   },
   {
     name: "end_time",
     label: "Hora Fin",
-    type: "time",
-    placeholder: "Ej: 17:00",
+    type: "select",
+    placeholder: "Seleccione hora de fin",
+    options: timeOptions,
   },
   {
     name: "notes",

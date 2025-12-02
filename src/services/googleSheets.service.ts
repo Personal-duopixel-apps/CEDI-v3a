@@ -223,13 +223,16 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
   
   // Horarios - relacionados a Puertas
   horarios: {
+    'Nombre': 'name',
     'Fecha': 'date',
     'ID de Puerta': 'dock_id',
+    'Puerta': 'dock_id',
     'Día': 'day',
     'Hora Inicio': 'start_time',
     'Hora Fin': 'end_time',
     'Disponible': 'is_available',
     'Descripción': 'notes',
+    'Notas': 'notes',
   },
   
   // Días Festivos - relacionados a Centro de Distribución
