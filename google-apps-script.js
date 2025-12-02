@@ -58,9 +58,12 @@ const SHEET_NAMES = {
   centros_distribucion: 'centros distribucion',
   horarios_negocio: 'horarios negocio',
   vehicle_types: 'tipos vehiculo',
+  'tipos vehiculo': 'tipos vehiculo',  // Alias directo
   docks: 'puertas',
+  puertas: 'puertas',  // Alias directo
   horarios: 'horarios',
   dias_festivos: 'dias festivos',
+  'dias festivos': 'dias festivos',  // Alias directo
   
   // Citas
   appointments: 'citas',
@@ -177,17 +180,20 @@ function mapFieldsToSpanish(data) {
 function findValueInPayload(data, header, sheetName) {
   // Primero buscar coincidencia exacta
   if (data.hasOwnProperty(header)) {
+    Logger.log('findValueInPayload: Encontrado exacto "' + header + '" = ' + data[header]);
     return { found: true, value: data[header] };
   }
   
-  const headerLower = String(header).toLowerCase();
+  const headerLower = String(header).toLowerCase().trim();
   
   // Buscar en mapeos específicos de la hoja primero
   if (sheetName && SHEET_SPECIFIC_MAPPINGS[sheetName]) {
     const sheetMappings = SHEET_SPECIFIC_MAPPINGS[sheetName];
     for (const englishKey in sheetMappings) {
-      if (sheetMappings[englishKey].toLowerCase() === headerLower) {
+      const spanishColumn = sheetMappings[englishKey];
+      if (spanishColumn.toLowerCase().trim() === headerLower) {
         if (data.hasOwnProperty(englishKey)) {
+          Logger.log('findValueInPayload: Encontrado por mapeo específico "' + englishKey + '" → "' + header + '" = ' + data[englishKey]);
           return { found: true, value: data[englishKey] };
         }
       }
@@ -196,8 +202,10 @@ function findValueInPayload(data, header, sheetName) {
   
   // Buscar por el mapeo global inverso (español → inglés)
   for (const englishKey in FIELD_MAPPINGS) {
-    if (FIELD_MAPPINGS[englishKey].toLowerCase() === headerLower) {
+    const spanishColumn = FIELD_MAPPINGS[englishKey];
+    if (spanishColumn.toLowerCase().trim() === headerLower) {
       if (data.hasOwnProperty(englishKey)) {
+        Logger.log('findValueInPayload: Encontrado por mapeo global "' + englishKey + '" → "' + header + '" = ' + data[englishKey]);
         return { found: true, value: data[englishKey] };
       }
     }
@@ -205,11 +213,13 @@ function findValueInPayload(data, header, sheetName) {
   
   // Buscar case-insensitive en las claves del payload
   for (const key in data) {
-    if (key.toLowerCase() === headerLower) {
+    if (key.toLowerCase().trim() === headerLower) {
+      Logger.log('findValueInPayload: Encontrado case-insensitive "' + key + '" = ' + data[key]);
       return { found: true, value: data[key] };
     }
   }
   
+  Logger.log('findValueInPayload: NO encontrado para header "' + header + '" en hoja "' + sheetName + '"');
   return { found: false, value: undefined };
 }
 
@@ -374,14 +384,23 @@ function createRow(sheetName, data) {
  * Actualiza una fila existente
  */
 function updateRow(sheetName, id, data) {
+  Logger.log('========== UPDATE ROW ==========');
+  Logger.log('Hoja: ' + sheetName);
+  Logger.log('ID a buscar: ' + id);
+  Logger.log('Datos recibidos: ' + JSON.stringify(data));
+  
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet) {
+    Logger.log('ERROR: Hoja no encontrada: ' + sheetName);
     return { success: false, error: `Hoja no encontrada: ${sheetName}` };
   }
   
   // Obtener headers y datos
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const allData = sheet.getDataRange().getValues();
+  
+  Logger.log('Headers encontrados: ' + JSON.stringify(headers));
+  Logger.log('Total filas: ' + allData.length);
   
   // Encontrar columna de ID (buscar 'id', 'ID', 'Id', etc.)
   let idColIndex = -1;
@@ -397,14 +416,19 @@ function updateRow(sheetName, id, data) {
   
   // Buscar fila por ID
   let rowIndex = -1;
+  Logger.log('Buscando ID "' + id + '" en columna ' + idColIndex);
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][idColIndex]) === String(id)) {
+    const cellValue = String(allData[i][idColIndex]);
+    Logger.log('Fila ' + (i+1) + ': ID = "' + cellValue + '"');
+    if (cellValue === String(id)) {
       rowIndex = i + 1; // +1 porque las filas en Sheets empiezan en 1
+      Logger.log('¡Encontrado en fila ' + rowIndex + '!');
       break;
     }
   }
   
   if (rowIndex === -1) {
+    Logger.log('ERROR: Registro no encontrado con id: ' + id);
     return { success: false, error: `Registro no encontrado con id: ${id}` };
   }
   
@@ -412,8 +436,11 @@ function updateRow(sheetName, id, data) {
   data.updated_at = new Date().toISOString();
   
   // Log para debug
+  Logger.log('=== UPDATE DEBUG ===');
+  Logger.log('SheetName: ' + sheetName);
   Logger.log('Headers: ' + JSON.stringify(headers));
   Logger.log('Data recibida: ' + JSON.stringify(data));
+  Logger.log('SHEET_SPECIFIC_MAPPINGS para esta hoja: ' + JSON.stringify(SHEET_SPECIFIC_MAPPINGS[sheetName]));
   
   // Actualizar valores
   let updatedFields = [];
@@ -438,12 +465,15 @@ function updateRow(sheetName, id, data) {
   });
   
   Logger.log('Campos actualizados: ' + JSON.stringify(updatedFields));
+  Logger.log('========== FIN UPDATE ROW ==========');
   
   return { 
     success: true, 
     message: 'Registro actualizado',
     id: id,
-    updatedFields: updatedFields
+    updatedFields: updatedFields,
+    sheetName: sheetName,
+    rowIndex: rowIndex
   };
 }
 

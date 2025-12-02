@@ -63,8 +63,16 @@ async function syncWithGoogleSheets(
     if (response.ok) {
       try {
         const result = await response.json()
-        console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`, result)
-        return { success: result.success !== false }
+        console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`)
+        console.log('📋 Respuesta del servidor:', JSON.stringify(result, null, 2))
+        if (result.updatedFields) {
+          console.log('📝 Campos actualizados:', result.updatedFields)
+        }
+        if (result.success === false) {
+          console.error('❌ Error del servidor:', result.error)
+          return { success: false, error: result.error }
+        }
+        return { success: true }
       } catch {
         // Si no podemos parsear JSON, asumimos éxito
         console.log(`✅ Sincronizado con Google Sheets: ${action} ${entity}`)
