@@ -104,7 +104,7 @@ const FIELD_MAPPINGS = {
   'email': 'Email',
   
   // Puertas/Docks
-  'distribution_center_id': 'Centro de Distribución',
+  'distribution_center_id': 'ID centro distribucion',
   'type': 'Tipo',
   'capacity': 'Capacidad',
   'status': 'Estado',
@@ -133,6 +133,22 @@ const FIELD_MAPPINGS = {
 };
 
 /**
+ * Mapeos específicos por hoja (cuando el campo tiene nombre diferente en esa hoja)
+ */
+const SHEET_SPECIFIC_MAPPINGS = {
+  'puertas': {
+    'code': 'Número de Puerta',
+    'notes': 'Descripción',
+  },
+  'horarios': {
+    'notes': 'Notas',
+  },
+  'dias festivos': {
+    'notes': 'Notas',
+  },
+};
+
+/**
  * Convierte un objeto con claves en inglés a claves en español
  */
 function mapFieldsToSpanish(data) {
@@ -147,24 +163,40 @@ function mapFieldsToSpanish(data) {
 
 /**
  * Busca un valor en el payload usando múltiples variaciones del nombre
+ * @param {Object} data - El payload con los datos
+ * @param {string} header - El nombre de la columna en Google Sheets
+ * @param {string} sheetName - El nombre de la hoja (opcional, para mapeos específicos)
  */
-function findValueInPayload(data, header) {
+function findValueInPayload(data, header, sheetName) {
   // Primero buscar coincidencia exacta
   if (data.hasOwnProperty(header)) {
     return { found: true, value: data[header] };
   }
   
-  // Buscar por el mapeo inverso (español → inglés)
+  const headerLower = String(header).toLowerCase();
+  
+  // Buscar en mapeos específicos de la hoja primero
+  if (sheetName && SHEET_SPECIFIC_MAPPINGS[sheetName]) {
+    const sheetMappings = SHEET_SPECIFIC_MAPPINGS[sheetName];
+    for (const englishKey in sheetMappings) {
+      if (sheetMappings[englishKey].toLowerCase() === headerLower) {
+        if (data.hasOwnProperty(englishKey)) {
+          return { found: true, value: data[englishKey] };
+        }
+      }
+    }
+  }
+  
+  // Buscar por el mapeo global inverso (español → inglés)
   for (const englishKey in FIELD_MAPPINGS) {
-    if (FIELD_MAPPINGS[englishKey].toLowerCase() === header.toLowerCase()) {
+    if (FIELD_MAPPINGS[englishKey].toLowerCase() === headerLower) {
       if (data.hasOwnProperty(englishKey)) {
         return { found: true, value: data[englishKey] };
       }
     }
   }
   
-  // Buscar case-insensitive
-  const headerLower = header.toLowerCase();
+  // Buscar case-insensitive en las claves del payload
   for (const key in data) {
     if (key.toLowerCase() === headerLower) {
       return { found: true, value: data[key] };
@@ -306,8 +338,8 @@ function createRow(sheetName, data) {
       return now;
     }
     
-    // Buscar el valor en el payload usando el helper
-    const result = findValueInPayload(data, header);
+    // Buscar el valor en el payload usando el helper (con nombre de hoja para mapeos específicos)
+    const result = findValueInPayload(data, header, sheetName);
     
     if (!result.found || result.value === undefined || result.value === null) return '';
     if (typeof result.value === 'boolean') return result.value ? 'TRUE' : 'FALSE';
@@ -386,8 +418,8 @@ function updateRow(sheetName, id, data) {
       return;
     }
     
-    // Buscar el valor en el payload usando múltiples variaciones
-    const result = findValueInPayload(data, header);
+    // Buscar el valor en el payload usando múltiples variaciones (con nombre de hoja)
+    const result = findValueInPayload(data, header, sheetName);
     
     if (result.found) {
       let value = result.value;

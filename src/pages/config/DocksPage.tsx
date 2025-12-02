@@ -20,8 +20,8 @@ const dockSchema = z.object({
 const config: CRUDConfig = {
   entity: "docks",
   labels: {
-    singular: "Andén",
-    plural: "Andenes",
+    singular: "Puerta",
+    plural: "Puertas",
   },
   displayField: "name",
   permissions: {
@@ -32,16 +32,16 @@ const config: CRUDConfig = {
   },
   messages: {
     create: {
-      success: "Andén creado exitosamente",
-      error: "Error al crear el andén",
+      success: "Puerta creada exitosamente",
+      error: "Error al crear la puerta",
     },
     update: {
-      success: "Andén actualizado exitosamente",
-      error: "Error al actualizar el andén",
+      success: "Puerta actualizada exitosamente",
+      error: "Error al actualizar la puerta",
     },
     delete: {
-      success: "Andén eliminado exitosamente",
-      error: "Error al eliminar el andén",
+      success: "Puerta eliminada exitosamente",
+      error: "Error al eliminar la puerta",
     },
   },
 }
