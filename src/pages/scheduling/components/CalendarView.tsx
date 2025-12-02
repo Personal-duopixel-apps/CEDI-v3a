@@ -77,7 +77,9 @@ interface Horario {
   day: string
   start_time: string
   end_time: string
-  dock_id?: string
+  dock_id?: string  // Legacy: una sola puerta
+  dock_ids?: string  // Múltiples puertas separadas por coma
+  distribution_center_id?: string  // Centro de distribución
   is_available?: boolean | string
 }
 

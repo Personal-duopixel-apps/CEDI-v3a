@@ -146,10 +146,15 @@ const SHEET_SPECIFIC_MAPPINGS = {
   'horarios': {
     'name': 'Nombre',
     'dock_id': 'Puerta',
-    'day': 'Día',
+    'dock_ids': 'Puertas',  // Múltiples puertas separadas por coma
+    'distribution_center_id': 'ID Centro de Distribución',
+    'day': 'Día',  // Legacy: un solo día
+    'days': 'Días',  // Nuevo: múltiples días separados por coma
     'start_time': 'Hora Inicio',
     'end_time': 'Hora Fin',
     'is_available': 'Disponible',
+    'is_active': 'Activo',
+    'inactive_message': 'Mensaje Inactivo',
     'notes': 'Descripción',
   },
   'usuarios': {

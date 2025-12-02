@@ -38,11 +38,17 @@ interface Puerta {
 
 interface Horario {
   id: string
-  dock_id?: string  // Mapeado desde 'ID de Puerta'
-  day: string
+  dock_id?: string  // Mapeado desde 'ID de Puerta' (legacy, una sola puerta)
+  dock_ids?: string  // Múltiples puertas separadas por coma
+  distribution_center_id?: string  // Centro de distribución
+  name?: string
+  day?: string  // Legacy: un solo día
+  days?: string  // Nuevo: múltiples días separados por coma
   start_time: string
   end_time: string
-  is_available?: boolean
+  is_available?: boolean | string
+  is_active?: boolean | string  // Nuevo: si el horario está activo
+  inactive_message?: string  // Mensaje cuando está inactivo
 }
 
 interface TimeSlot {
@@ -129,14 +135,41 @@ export function BookingStep1({
       console.log(`🔍 Buscando horario para ${dayName}`)
       
       const dayHorario = horarios.find(h => {
-        const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
+        // Verificar si el horario está activo
+        const isActive = h.is_active === true || h.is_active === 'TRUE' || h.is_active === 'true' || h.is_active === 'Sí' || h.is_active === undefined
+        if (!isActive) return false
+        
+        // Verificar si el día coincide (soporta tanto 'day' como 'days')
+        let dayMatches = false
+        
+        // Nuevo formato: 'days' con múltiples días separados por coma
+        if (h.days) {
+          const daysList = h.days.split(',').map(d => d.trim().toLowerCase())
+          dayMatches = daysList.includes(dayName.toLowerCase())
+        }
+        // Legacy: 'day' con un solo día
+        else if (h.day) {
+          dayMatches = h.day.toLowerCase() === dayName.toLowerCase()
+        }
+        
         if (!dayMatches) return false
         
         // El horario puede relacionarse por:
-        // 1. dock_id coincide con ID de la puerta
-        // 2. dock_id coincide con nombre de la puerta
-        // 3. name del horario coincide con nombre de la puerta
-        // 4. Si no tiene dock_id, mostrar para todas las puertas
+        // 1. dock_ids contiene el ID o nombre de la puerta (múltiples puertas)
+        // 2. dock_id coincide con ID de la puerta (legacy)
+        // 3. dock_id coincide con nombre de la puerta
+        // 4. name del horario coincide con nombre de la puerta
+        // 5. Si no tiene dock_id ni dock_ids, mostrar para todas las puertas
+        
+        // Verificar dock_ids (múltiples puertas)
+        if (h.dock_ids) {
+          const dockIdsList = h.dock_ids.split(',').map(id => id.trim())
+          if (dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)) {
+            return true
+          }
+        }
+        
+        // Verificar dock_id (legacy, una sola puerta)
         const puertaMatches = !h.dock_id || 
           h.dock_id === selectedPuerta.id || 
           h.dock_id === selectedPuerta.name ||
@@ -500,12 +533,39 @@ export function BookingStep1({
                     
                     // Verificar si hay horario para la puerta seleccionada en este día
                     const hasSchedule = horarios.some(h => {
-                      const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
+                      // Verificar si el horario está activo
+                      const isActive = h.is_active === true || h.is_active === 'TRUE' || h.is_active === 'true' || h.is_active === 'Sí' || h.is_active === undefined
+                      if (!isActive) return false
+                      
+                      // Verificar si el día coincide (soporta tanto 'day' como 'days')
+                      let dayMatches = false
+                      
+                      // Nuevo formato: 'days' con múltiples días separados por coma
+                      if (h.days) {
+                        const daysList = h.days.split(',').map(d => d.trim().toLowerCase())
+                        dayMatches = daysList.includes(dayName.toLowerCase())
+                      }
+                      // Legacy: 'day' con un solo día
+                      else if (h.day) {
+                        dayMatches = h.day.toLowerCase() === dayName.toLowerCase()
+                      }
+                      
+                      if (!dayMatches) return false
+                      
+                      // Verificar dock_ids (múltiples puertas)
+                      if (h.dock_ids && selectedPuerta) {
+                        const dockIdsList = h.dock_ids.split(',').map(id => id.trim())
+                        if (dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)) {
+                          return true
+                        }
+                      }
+                      
+                      // Verificar dock_id (legacy)
                       const puertaMatches = !h.dock_id || 
                         h.dock_id === selectedPuerta?.id || 
                         h.dock_id === selectedPuerta?.name ||
                         h.name === selectedPuerta?.name
-                      return dayMatches && puertaMatches
+                      return puertaMatches
                     })
 
                     return (

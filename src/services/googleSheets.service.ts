@@ -221,16 +221,22 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Activo': 'is_active',
   },
   
-  // Horarios - relacionados a Puertas
+  // Horarios - relacionados a Puertas y Centros de Distribución
   horarios: {
     'Nombre': 'name',
     'Fecha': 'date',
     'ID de Puerta': 'dock_id',
     'Puerta': 'dock_id',
-    'Día': 'day',
+    'Puertas': 'dock_ids',  // Múltiples puertas separadas por coma
+    'ID Centro de Distribución': 'distribution_center_id',
+    'Centro de Distribución': 'distribution_center_id',
+    'Día': 'day',  // Legacy: un solo día
+    'Días': 'days',  // Nuevo: múltiples días separados por coma
     'Hora Inicio': 'start_time',
     'Hora Fin': 'end_time',
     'Disponible': 'is_available',
+    'Activo': 'is_active',
+    'Mensaje Inactivo': 'inactive_message',
     'Descripción': 'notes',
     'Notas': 'notes',
   },
