@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -30,7 +31,12 @@ interface BookingSelection {
 
 export function AppointmentsPage() {
   const toast = useToast()
-  const [activeTab, setActiveTab] = React.useState("calendar")
+  const location = useLocation()
+  const navigate = useNavigate()
+  
+  // Detectar si estamos en /citas/nueva para abrir el wizard directamente
+  const isNewAppointmentRoute = location.pathname === "/citas/nueva"
+  const [activeTab, setActiveTab] = React.useState(isNewAppointmentRoute ? "booking" : "calendar")
   const [bookingStep, setBookingStep] = React.useState(1)
   const [bookingSelection, setBookingSelection] = React.useState<BookingSelection>({
     centro: null,
@@ -56,6 +62,29 @@ export function AppointmentsPage() {
     email: string
     proveedorNombre: string
   } | null>(null)
+
+  // Sincronizar URL con tab activo
+  React.useEffect(() => {
+    if (location.pathname === "/citas/nueva") {
+      setActiveTab("booking")
+      setBookingStep(1)
+      setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
+    } else if (location.pathname === "/citas") {
+      setActiveTab("calendar")
+    }
+  }, [location.pathname])
+
+  // Cuando se cambia el tab, actualizar la URL
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    if (tab === "booking") {
+      navigate("/citas/nueva", { replace: true })
+      setBookingStep(1)
+      setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
+    } else {
+      navigate("/citas", { replace: true })
+    }
+  }
 
   // Cargar datos - usa caché con TTL automático
   React.useEffect(() => {
@@ -252,7 +281,7 @@ export function AppointmentsPage() {
     setCreatedAppointmentInfo(null)
     setBookingStep(1)
     setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
-    setActiveTab("calendar")
+    handleTabChange("calendar")
   }
 
   // Copiar enlace al portapapeles
@@ -371,31 +400,29 @@ export function AppointmentsPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Agenda de Citas</h1>
-          <p className="text-muted-foreground">Gestiona las citas de recepción del CEDI</p>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Agenda de Citas</h1>
+            <p className="text-muted-foreground">Gestiona las citas de recepción del CEDI</p>
+          </div>
+          <TabsList>
+            <TabsTrigger value="calendar" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Calendario
+            </TabsTrigger>
+            <TabsTrigger value="booking" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva Cita
+            </TabsTrigger>
+          </TabsList>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={activeTab === "booking" ? "default" : "outline"}
-            onClick={() => {
-              setActiveTab("booking")
-              setBookingStep(1)
-              setBookingSelection({ centro: null, puerta: null, fecha: null, horario: null })
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Cita
-          </Button>
-        </div>
-      </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-5">
@@ -478,22 +505,12 @@ export function AppointmentsPage() {
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="calendar" className="gap-2">
-            <Calendar className="h-4 w-4" />
-            Calendario
-          </TabsTrigger>
-          <TabsTrigger value="booking" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nueva Cita
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendar" className="mt-6">
+        {/* Tab Contents */}
+        <TabsContent value="calendar" className="mt-0">
           <CalendarView
             appointments={appointments}
+            puertas={puertas}
+            horarios={horarios}
             onStatusChange={handleStatusChange}
           />
         </TabsContent>
@@ -589,7 +606,7 @@ export function AppointmentsPage() {
             />
           )}
         </TabsContent>
-      </Tabs>
-    </motion.div>
+      </motion.div>
+    </Tabs>
   )
 }
