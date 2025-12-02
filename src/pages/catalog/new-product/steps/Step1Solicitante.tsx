@@ -9,32 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
 import { useWizard } from "../WizardContext"
 
-interface Buyer {
-  id: string
-  Nombre: string
-}
-
 export function Step1Solicitante() {
-  const { data, updateData } = useWizard()
-  const [buyers, setBuyers] = React.useState<Buyer[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    async function loadBuyers() {
-      try {
-        const buyersData = await db.getAll("buyers")
-        setBuyers(buyersData as Buyer[])
-      } catch (error) {
-        console.error("Error cargando compradores:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadBuyers()
-  }, [])
+  const { data, updateData, catalogs, catalogsLoading } = useWizard()
+  
+  // Usar los catálogos del contexto
+  const buyers = catalogs.buyers
+  const laboratories = catalogs.laboratories
+  const suppliers = catalogs.suppliers
+  const isLoading = catalogsLoading
 
   const handleChange = (field: string, value: string) => {
     updateData("solicitante", { [field]: value })
@@ -50,18 +34,28 @@ export function Step1Solicitante() {
 
       {/* Form */}
       <div className="grid gap-6 sm:grid-cols-2">
-        {/* Nombre razón social */}
+        {/* Nombre razón social (Proveedor) */}
         <div className="space-y-2">
           <Label htmlFor="nombreRazonSocial" className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             Nombre razón social <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="nombreRazonSocial"
-            placeholder="Ingrese el nombre de la razón social"
+          <Select
             value={data.solicitante.nombreRazonSocial}
-            onChange={(e) => handleChange("nombreRazonSocial", e.target.value)}
-          />
+            onValueChange={(value) => handleChange("nombreRazonSocial", value)}
+            disabled={isLoading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione proveedor..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {suppliers.filter(s => s.id && s.name).map((supplier) => (
+                <SelectItem key={supplier.id} value={supplier.name}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Nombre del solicitante */}
@@ -84,12 +78,22 @@ export function Step1Solicitante() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
             Nombre del laboratorio
           </Label>
-          <Input
-            id="nombreLaboratorio"
-            placeholder="Nombre del laboratorio"
+          <Select
             value={data.solicitante.nombreLaboratorio}
-            onChange={(e) => handleChange("nombreLaboratorio", e.target.value)}
-          />
+            onValueChange={(value) => handleChange("nombreLaboratorio", value)}
+            disabled={isLoading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione laboratorio..."} />
+            </SelectTrigger>
+            <SelectContent>
+              {laboratories.filter(l => l.id && l.name).map((lab) => (
+                <SelectItem key={lab.id} value={lab.name}>
+                  {lab.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Teléfono/Celular */}
@@ -157,9 +161,9 @@ export function Step1Solicitante() {
               <SelectValue placeholder={isLoading ? "Cargando compradores..." : "Busca o selecciona un comprador..."} />
             </SelectTrigger>
             <SelectContent>
-              {buyers.map((buyer) => (
-                <SelectItem key={buyer.id} value={buyer.id}>
-                  {buyer.Nombre}
+              {buyers.filter(b => b.id && b.name).map((buyer) => (
+                <SelectItem key={buyer.id} value={buyer.name}>
+                  {buyer.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -11,38 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
 import { useWizard } from "../WizardContext"
 import type { PrincipioActivoItem } from "../types"
 
-interface CatalogItem {
-  id: string
-  Nombre: string
-}
-
 export function Step3IngredientesActivos() {
-  const { data, updateData } = useWizard()
-  const [principiosActivos, setPrincipiosActivos] = React.useState<CatalogItem[]>([])
-  const [unidadesMedida, setUnidadesMedida] = React.useState<CatalogItem[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [principios, unidades] = await Promise.all([
-          db.getAll("active_ingredients"),
-          db.getAll("measurement_units"),
-        ])
-        setPrincipiosActivos(principios as CatalogItem[])
-        setUnidadesMedida(unidades as CatalogItem[])
-      } catch (error) {
-        console.error("Error cargando catálogos:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadCatalogs()
-  }, [])
+  const { data, updateData, catalogs, catalogsLoading } = useWizard()
+  
+  // Usar los catálogos del contexto
+  const principiosActivos = catalogs.active_ingredients
+  const unidadesMedida = catalogs.measurement_units
+  const isLoading = catalogsLoading
 
   const addPrincipioActivo = () => {
     const newItem: PrincipioActivoItem = {
@@ -157,9 +135,9 @@ export function Step3IngredientesActivos() {
                         <SelectValue placeholder="Seleccione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {principiosActivos.map((pa) => (
-                          <SelectItem key={pa.id} value={pa.Nombre}>
-                            {pa.Nombre}
+                        {principiosActivos.filter(pa => pa.id && pa.name).map((pa) => (
+                          <SelectItem key={pa.id} value={pa.name}>
+                            {pa.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -192,9 +170,9 @@ export function Step3IngredientesActivos() {
                         <SelectValue placeholder="Seleccione..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {unidadesMedida.map((um) => (
-                          <SelectItem key={um.id} value={um.Nombre}>
-                            {um.Nombre}
+                        {unidadesMedida.filter(um => um.id && um.name).map((um) => (
+                          <SelectItem key={um.id} value={um.name}>
+                            {um.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

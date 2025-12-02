@@ -11,13 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
 import { useWizard } from "../WizardContext"
-
-interface CatalogItem {
-  id: string
-  Nombre: string
-}
 
 const SI_NO_OPTIONS = [
   { value: "Sí", label: "Sí" },
@@ -25,31 +19,13 @@ const SI_NO_OPTIONS = [
 ]
 
 export function Step4InformacionAdicional() {
-  const { data, updateData } = useWizard()
-  const [clasificaciones, setClasificaciones] = React.useState<CatalogItem[]>([])
-  const [impuestos, setImpuestos] = React.useState<CatalogItem[]>([])
-  const [nivelesProducto, setNivelesProducto] = React.useState<CatalogItem[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [clasif, imp, niveles] = await Promise.all([
-          db.getAll("classifications"),
-          db.getAll("taxes"),
-          db.getAll("product_levels"),
-        ])
-        setClasificaciones(clasif as CatalogItem[])
-        setImpuestos(imp as CatalogItem[])
-        setNivelesProducto(niveles as CatalogItem[])
-      } catch (error) {
-        console.error("Error cargando catálogos:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadCatalogs()
-  }, [])
+  const { data, updateData, catalogs, catalogsLoading } = useWizard()
+  
+  // Usar los catálogos del contexto
+  const clasificaciones = catalogs.classifications
+  const impuestos = catalogs.taxes
+  const nivelesProducto = catalogs.product_levels
+  const isLoading = catalogsLoading
 
   const handleChange = (field: string, value: string | boolean) => {
     updateData("informacionAdicional", { [field]: value })
@@ -120,7 +96,7 @@ export function Step4InformacionAdicional() {
               onValueChange={(value) => handleChange("productoControlado", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select an option..." />
+                <SelectValue placeholder="Seleccione..." />
               </SelectTrigger>
               <SelectContent>
                 {SI_NO_OPTIONS.map((opt) => (
@@ -142,7 +118,7 @@ export function Step4InformacionAdicional() {
               onValueChange={(value) => handleChange("productoRefrigerado", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select an option..." />
+                <SelectValue placeholder="Seleccione..." />
               </SelectTrigger>
               <SelectContent>
                 {SI_NO_OPTIONS.map((opt) => (
@@ -164,7 +140,7 @@ export function Step4InformacionAdicional() {
               onValueChange={(value) => handleChange("productoUsoHospitalario", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select an option..." />
+                <SelectValue placeholder="Seleccione..." />
               </SelectTrigger>
               <SelectContent>
                 {SI_NO_OPTIONS.map((opt) => (
@@ -186,7 +162,7 @@ export function Step4InformacionAdicional() {
               onValueChange={(value) => handleChange("requiereReceta", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select an option..." />
+                <SelectValue placeholder="Seleccione..." />
               </SelectTrigger>
               <SelectContent>
                 {SI_NO_OPTIONS.map((opt) => (
@@ -208,7 +184,7 @@ export function Step4InformacionAdicional() {
               onValueChange={(value) => handleChange("usoCronico", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select an option..." />
+                <SelectValue placeholder="Seleccione..." />
               </SelectTrigger>
               <SelectContent>
                 {SI_NO_OPTIONS.map((opt) => (
@@ -309,12 +285,12 @@ export function Step4InformacionAdicional() {
               disabled={isLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder={isLoading ? "Cargando..." : "Select an option..."} />
+                <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione..."} />
               </SelectTrigger>
               <SelectContent>
-                {clasificaciones.map((item) => (
-                  <SelectItem key={item.id} value={item.Nombre}>
-                    {item.Nombre}
+                {clasificaciones.filter(i => i.id && i.name).map((item) => (
+                  <SelectItem key={item.id} value={item.name}>
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -331,12 +307,12 @@ export function Step4InformacionAdicional() {
               disabled={isLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder={isLoading ? "Cargando..." : "Select an option..."} />
+                <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione..."} />
               </SelectTrigger>
               <SelectContent>
-                {impuestos.map((item) => (
-                  <SelectItem key={item.id} value={item.Nombre}>
-                    {item.Nombre}
+                {impuestos.filter(i => i.id && i.name).map((item) => (
+                  <SelectItem key={item.id} value={item.name}>
+                    {item.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -361,12 +337,12 @@ export function Step4InformacionAdicional() {
                   disabled={isLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an option..." />
+                    <SelectValue placeholder="Seleccione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {nivelesProducto.map((item) => (
-                      <SelectItem key={item.id} value={item.Nombre}>
-                        {item.Nombre}
+                    {nivelesProducto.filter(i => i.id && i.name).map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -383,12 +359,12 @@ export function Step4InformacionAdicional() {
                   disabled={isLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an option..." />
+                    <SelectValue placeholder="Seleccione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {nivelesProducto.map((item) => (
-                      <SelectItem key={item.id} value={item.Nombre}>
-                        {item.Nombre}
+                    {nivelesProducto.filter(i => i.id && i.name).map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -405,12 +381,12 @@ export function Step4InformacionAdicional() {
                   disabled={isLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an option..." />
+                    <SelectValue placeholder="Seleccione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {nivelesProducto.map((item) => (
-                      <SelectItem key={item.id} value={item.Nombre}>
-                        {item.Nombre}
+                    {nivelesProducto.filter(i => i.id && i.name).map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -425,12 +401,12 @@ export function Step4InformacionAdicional() {
                   disabled={isLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an option..." />
+                    <SelectValue placeholder="Seleccione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {nivelesProducto.map((item) => (
-                      <SelectItem key={item.id} value={item.Nombre}>
-                        {item.Nombre}
+                    {nivelesProducto.filter(i => i.id && i.name).map((item) => (
+                      <SelectItem key={item.id} value={item.name}>
+                        {item.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

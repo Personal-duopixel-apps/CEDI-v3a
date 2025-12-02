@@ -10,41 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
 import { useWizard } from "../WizardContext"
 
-interface CatalogItem {
-  id: string
-  Nombre: string
-  Codigo?: string
-}
-
 export function Step2DatosGenerales() {
-  const { data, updateData, generateProductName } = useWizard()
-  const [formasFarmaceuticas, setFormasFarmaceuticas] = React.useState<CatalogItem[]>([])
-  const [unidadesMedida, setUnidadesMedida] = React.useState<CatalogItem[]>([])
-  const [tiposEmpaque, setTiposEmpaque] = React.useState<CatalogItem[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [formas, unidades, empaques] = await Promise.all([
-          db.getAll("pharmaceutical_forms"),
-          db.getAll("measurement_units"),
-          db.getAll("package_types"),
-        ])
-        setFormasFarmaceuticas(formas as CatalogItem[])
-        setUnidadesMedida(unidades as CatalogItem[])
-        setTiposEmpaque(empaques as CatalogItem[])
-      } catch (error) {
-        console.error("Error cargando catálogos:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadCatalogs()
-  }, [])
+  const { data, updateData, generateProductName, catalogs, catalogsLoading } = useWizard()
+  
+  // Usar los catálogos del contexto
+  const formasFarmaceuticas = catalogs.pharmaceutical_forms
+  const unidadesMedida = catalogs.measurement_units
+  const tiposEmpaque = catalogs.package_types
+  const isLoading = catalogsLoading
 
   const handleChange = (field: string, value: string | number) => {
     updateData("datosGenerales", { [field]: value })
@@ -108,9 +83,9 @@ export function Step2DatosGenerales() {
               <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione la forma farmacéutica"} />
             </SelectTrigger>
             <SelectContent>
-              {formasFarmaceuticas.map((item) => (
-                <SelectItem key={item.id} value={item.Nombre}>
-                  {item.Nombre}
+              {formasFarmaceuticas.filter(i => i.id && i.name).map((item) => (
+                <SelectItem key={item.id} value={item.name}>
+                  {item.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -147,9 +122,9 @@ export function Step2DatosGenerales() {
               <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione peso/tamaño/medida"} />
             </SelectTrigger>
             <SelectContent>
-              {unidadesMedida.map((item) => (
-                <SelectItem key={item.id} value={item.Nombre}>
-                  {item.Nombre}
+              {unidadesMedida.filter(i => i.id && i.name).map((item) => (
+                <SelectItem key={item.id} value={item.name}>
+                  {item.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -171,9 +146,9 @@ export function Step2DatosGenerales() {
               <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione el empaque"} />
             </SelectTrigger>
             <SelectContent>
-              {tiposEmpaque.map((item) => (
-                <SelectItem key={item.id} value={item.Nombre}>
-                  {item.Nombre}
+              {tiposEmpaque.filter(i => i.id && i.name).map((item) => (
+                <SelectItem key={item.id} value={item.name}>
+                  {item.name}
                 </SelectItem>
               ))}
             </SelectContent>

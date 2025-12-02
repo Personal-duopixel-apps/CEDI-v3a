@@ -11,14 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
 import { useWizard } from "../WizardContext"
 import type { BonificacionItem } from "../types"
-
-interface CatalogItem {
-  id: string
-  Nombre: string
-}
 
 const SI_NO_OPTIONS = [
   { value: "Sí", label: "Sí" },
@@ -26,23 +20,11 @@ const SI_NO_OPTIONS = [
 ]
 
 export function Step5DatosCompra() {
-  const { data, updateData } = useWizard()
-  const [monedas, setMonedas] = React.useState<CatalogItem[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const monedasData = await db.getAll("currencies")
-        setMonedas(monedasData as CatalogItem[])
-      } catch (error) {
-        console.error("Error cargando catálogos:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadCatalogs()
-  }, [])
+  const { data, updateData, catalogs, catalogsLoading } = useWizard()
+  
+  // Usar los catálogos del contexto
+  const monedas = catalogs.currencies
+  const isLoading = catalogsLoading
 
   const handleChange = (field: string, value: string | number) => {
     updateData("datosCompra", { [field]: value })
@@ -145,9 +127,9 @@ export function Step5DatosCompra() {
                       <SelectValue placeholder={isLoading ? "Cargando..." : "Seleccione el tipo de moneda"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {monedas.map((item) => (
-                        <SelectItem key={item.id} value={item.Nombre}>
-                          {item.Nombre}
+                      {monedas.filter(i => i.id && i.name).map((item) => (
+                        <SelectItem key={item.id} value={item.name}>
+                          {item.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
