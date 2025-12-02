@@ -69,6 +69,112 @@ const SHEET_NAMES = {
 };
 
 /**
+ * Mapeo de nombres de campos inglés → español
+ * La app envía nombres en inglés, Google Sheets tiene columnas en español
+ */
+const FIELD_MAPPINGS = {
+  // Campos globales
+  'id': 'ID',
+  'code': 'Código',
+  'name': 'Nombre',
+  'description': 'Descripción',
+  'is_active': 'Activo',
+  'created_at': 'Fecha Creación',
+  'updated_at': 'Fecha Actualización',
+  
+  // Proveedores
+  'legal_name': 'Razón Social',
+  'tax_id': 'NIT',
+  'address': 'Dirección',
+  'city': 'Ciudad',
+  'state': 'Estado',
+  'country': 'País',
+  'postal_code': 'Código Postal',
+  'contact_name': 'Persona de Contacto',
+  'contact_email': 'Email',
+  'contact_phone': 'Teléfono',
+  'payment_terms_days': 'Plazo de Pago',
+  'notes': 'Notas',
+  'main_buyer_id': 'ID Comprador Principal',
+  'main_buyer_name': 'Nombre Comprador Principal',
+  
+  // Centros de distribución
+  'timezone': 'Zona Horaria',
+  'phone': 'Teléfono',
+  'email': 'Email',
+  
+  // Puertas/Docks
+  'distribution_center_id': 'Centro de Distribución',
+  'type': 'Tipo',
+  'capacity': 'Capacidad',
+  'status': 'Estado',
+  
+  // Horarios
+  'dock_id': 'Puerta',
+  'day': 'Día',
+  'start_time': 'Hora Inicio',
+  'end_time': 'Hora Fin',
+  'is_available': 'Disponible',
+  
+  // Días festivos
+  'date': 'Fecha',
+  'is_annual': 'Es Anual',
+  'is_working_day': 'Es Día Laboral',
+  
+  // Tipos de vehículo
+  'max_weight': 'Peso (ton)',
+  
+  // Catálogos generales
+  'symbol': 'Símbolo',
+  'percentage': 'Porcentaje',
+  'abbreviation': 'Abreviatura',
+  'level': 'Nivel',
+  'parent_id': 'ID Padre',
+};
+
+/**
+ * Convierte un objeto con claves en inglés a claves en español
+ */
+function mapFieldsToSpanish(data) {
+  const mapped = {};
+  for (const key in data) {
+    // Buscar el nombre en español, si no existe usar el original
+    const spanishKey = FIELD_MAPPINGS[key] || key;
+    mapped[spanishKey] = data[key];
+  }
+  return mapped;
+}
+
+/**
+ * Busca un valor en el payload usando múltiples variaciones del nombre
+ */
+function findValueInPayload(data, header) {
+  // Primero buscar coincidencia exacta
+  if (data.hasOwnProperty(header)) {
+    return { found: true, value: data[header] };
+  }
+  
+  // Buscar por el mapeo inverso (español → inglés)
+  for (const englishKey in FIELD_MAPPINGS) {
+    if (FIELD_MAPPINGS[englishKey].toLowerCase() === header.toLowerCase()) {
+      if (data.hasOwnProperty(englishKey)) {
+        return { found: true, value: data[englishKey] };
+      }
+    }
+  }
+  
+  // Buscar case-insensitive
+  const headerLower = header.toLowerCase();
+  for (const key in data) {
+    if (key.toLowerCase() === headerLower) {
+      return { found: true, value: data[key] };
+    }
+  }
+  
+  return { found: false, value: undefined };
+}
+
+/**
  * Maneja peticiones GET (para pruebas)
  */
 function doGet(e) {
@@ -200,23 +306,12 @@ function createRow(sheetName, data) {
       return now;
     }
     
-    // Buscar el valor en el payload (case-insensitive y con variaciones)
-    let value = data[header];
+    // Buscar el valor en el payload usando el helper
+    const result = findValueInPayload(data, header);
     
-    // Si no se encuentra, intentar buscar con diferentes variaciones del nombre
-    if (value === undefined) {
-      // Buscar coincidencia exacta primero
-      for (const key in data) {
-        if (key.toLowerCase() === headerLower) {
-          value = data[key];
-          break;
-        }
-      }
-    }
-    
-    if (value === undefined || value === null) return '';
-    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-    return value;
+    if (!result.found || result.value === undefined || result.value === null) return '';
+    if (typeof result.value === 'boolean') return result.value ? 'TRUE' : 'FALSE';
+    return result.value;
   });
   
   // Agregar fila al final
@@ -277,20 +372,39 @@ function updateRow(sheetName, id, data) {
   // Actualizar timestamp
   data.updated_at = new Date().toISOString();
   
+  // Log para debug
+  Logger.log('Headers: ' + JSON.stringify(headers));
+  Logger.log('Data recibida: ' + JSON.stringify(data));
+  
   // Actualizar valores
+  let updatedFields = [];
   headers.forEach((header, colIndex) => {
-    if (data.hasOwnProperty(header) && header !== 'id' && header !== 'created_at') {
-      let value = data[header];
+    const headerLower = String(header).toLowerCase();
+    
+    // Saltar columnas de ID y created_at
+    if (headerLower === 'id' || headerLower === 'created_at') {
+      return;
+    }
+    
+    // Buscar el valor en el payload usando múltiples variaciones
+    const result = findValueInPayload(data, header);
+    
+    if (result.found) {
+      let value = result.value;
       if (typeof value === 'boolean') value = value ? 'TRUE' : 'FALSE';
       if (value === undefined || value === null) value = '';
       sheet.getRange(rowIndex, colIndex + 1).setValue(value);
+      updatedFields.push(header);
     }
   });
+  
+  Logger.log('Campos actualizados: ' + JSON.stringify(updatedFields));
   
   return { 
     success: true, 
     message: 'Registro actualizado',
-    id: id
+    id: id,
+    updatedFields: updatedFields
   };
 }
 

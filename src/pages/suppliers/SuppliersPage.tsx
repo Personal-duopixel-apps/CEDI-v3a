@@ -58,7 +58,7 @@ const config: CRUDConfig = {
 const columns: DataTableColumn<Supplier>[] = [
   { key: "code", label: "Código", sortable: true },
   { key: "name", label: "Nombre", sortable: true },
-  { key: "tax_id", label: "RFC" },
+  { key: "tax_id", label: "NIT" },
   { key: "city", label: "Ciudad", sortable: true },
   { key: "contact_name", label: "Contacto" },
   { key: "contact_email", label: "Email" },
@@ -78,14 +78,40 @@ const columns: DataTableColumn<Supplier>[] = [
   },
 ]
 
-// Estados de México
-const mexicanStates = [
-  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche",
-  "Chiapas", "Chihuahua", "CDMX", "Coahuila", "Colima", "Durango",
-  "Estado de México", "Guanajuato", "Guerrero", "Hidalgo", "Jalisco",
-  "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca", "Puebla",
-  "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora",
-  "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas"
+// Países de América
+const americanCountries = [
+  "Guatemala",
+  "México",
+  "Estados Unidos",
+  "Canadá",
+  "Argentina",
+  "Belice",
+  "Bolivia",
+  "Brasil",
+  "Chile",
+  "Colombia",
+  "Costa Rica",
+  "Cuba",
+  "Ecuador",
+  "El Salvador",
+  "Honduras",
+  "Nicaragua",
+  "Panamá",
+  "Paraguay",
+  "Perú",
+  "Puerto Rico",
+  "República Dominicana",
+  "Uruguay",
+  "Venezuela",
+]
+
+// Departamentos de Guatemala
+const guatemalaStates = [
+  "Alta Verapaz", "Baja Verapaz", "Chimaltenango", "Chiquimula",
+  "El Progreso", "Escuintla", "Guatemala", "Huehuetenango",
+  "Izabal", "Jalapa", "Jutiapa", "Petén", "Quetzaltenango",
+  "Quiché", "Retalhuleu", "Sacatepéquez", "San Marcos",
+  "Santa Rosa", "Sololá", "Suchitepéquez", "Totonicapán", "Zacapa"
 ]
 
 // Campos del formulario
@@ -111,52 +137,52 @@ const formFields: FormField[] = [
     type: "text",
     required: false,
     placeholder: "Ej: DIFARNA S.A. de C.V.",
-    className: "sm:col-span-2",
   },
   {
     name: "tax_id",
-    label: "RFC/NIT",
+    label: "NIT",
     type: "text",
     required: false,
-    placeholder: "DIF901234AB1",
-    maxLength: 13,
+    placeholder: "123456-7",
+    maxLength: 15,
   },
   {
     name: "address",
     label: "Dirección",
     type: "text",
     required: false,
-    placeholder: "Av. Insurgentes Sur 1234, Col. Del Valle",
+    placeholder: "12 Calle 1-25, Zona 10",
     className: "sm:col-span-2",
+  },
+  {
+    name: "country",
+    label: "País",
+    type: "select",
+    required: false,
+    defaultValue: "Guatemala",
+    options: americanCountries.map(c => ({ value: c, label: c })),
+  },
+  {
+    name: "state",
+    label: "Departamento/Estado",
+    type: "select",
+    required: false,
+    options: guatemalaStates.map(s => ({ value: s, label: s })),
   },
   {
     name: "city",
     label: "Ciudad",
     type: "text",
     required: false,
-    placeholder: "Ciudad de México",
-  },
-  {
-    name: "state",
-    label: "Estado",
-    type: "select",
-    required: false,
-    options: mexicanStates.map(s => ({ value: s, label: s })),
-  },
-  {
-    name: "country",
-    label: "País",
-    type: "text",
-    required: false,
-    defaultValue: "México",
+    placeholder: "Ciudad de Guatemala",
   },
   {
     name: "postal_code",
     label: "Código Postal",
     type: "text",
     required: false,
-    placeholder: "03100",
-    maxLength: 5,
+    placeholder: "01010",
+    maxLength: 10,
   },
   {
     name: "contact_name",
@@ -214,7 +240,7 @@ export function SuppliersPage() {
       searchFields={["code", "name", "tax_id", "contact_name"]}
       defaultValues={{
         is_active: true,
-        country: "México",
+        country: "Guatemala",
       }}
     />
   )
