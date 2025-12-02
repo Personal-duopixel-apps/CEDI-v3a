@@ -74,13 +74,15 @@ interface Puerta {
 interface Horario {
   id: string
   name?: string
-  day: string
+  day?: string  // Legacy: un solo día
+  days?: string  // Múltiples días separados por coma
   start_time: string
   end_time: string
   dock_id?: string  // Legacy: una sola puerta
   dock_ids?: string  // Múltiples puertas separadas por coma
   distribution_center_id?: string  // Centro de distribución
   is_available?: boolean | string
+  is_active?: boolean | string
 }
 
 interface CalendarViewProps {
@@ -195,12 +197,112 @@ export function CalendarView({
   }, [selectedDate, appointmentsByDate])
 
   // Obtener configuración de intervalo de horarios
-  const { timeInterval, workdayStart, workdayEnd } = useSettingsStore()
+  const { timeInterval } = useSettingsStore()
 
-  // Generar lista de TODOS los horarios del día laboral según configuración
+  // Obtener el día de la semana seleccionado
+  const selectedDayName = React.useMemo(() => {
+    if (!selectedDate) return ""
+    const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+    return dayNames[selectedDate.getDay()]
+  }, [selectedDate])
+
+  // Calcular los horarios dinámicamente basándose en los horarios configurados
   const uniqueTimeSlots = React.useMemo(() => {
-    return generateTimeSlots(timeInterval, workdayStart, workdayEnd)
-  }, [timeInterval, workdayStart, workdayEnd])
+    if (!selectedDate || !horarios || horarios.length === 0) {
+      // Si no hay horarios configurados, usar valores por defecto
+      return generateTimeSlots(timeInterval, 8, 18)
+    }
+
+    // Filtrar horarios que aplican para el día seleccionado
+    const horariosDelDia = horarios.filter(h => {
+      // Verificar si el horario está INACTIVO
+      const isInactive = h.is_active === false || 
+                        h.is_active === 'FALSE' || 
+                        h.is_active === 'false' || 
+                        h.is_active === 'No' || 
+                        h.is_active === 'no' ||
+                        h.is_available === false || 
+                        h.is_available === 'FALSE' || 
+                        h.is_available === 'false' || 
+                        h.is_available === 'No' || 
+                        h.is_available === 'no'
+      
+      if (isInactive) return false
+
+      // Verificar si el día está incluido (campo days puede ser "lunes,martes,miércoles,jueves,viernes")
+      if (h.days) {
+        const diasHorario = h.days.toLowerCase().split(',').map(d => d.trim())
+        return diasHorario.includes(selectedDayName)
+      }
+      
+      // Legacy: verificar campo day
+      if (h.day) {
+        return h.day.toLowerCase() === selectedDayName
+      }
+      
+      return true // Si no tiene días especificados, aplica todos los días
+    })
+
+    if (horariosDelDia.length === 0) {
+      // Si no hay horarios para este día, mostrar mensaje vacío
+      return []
+    }
+
+    // Encontrar la hora de inicio más temprana y la hora de fin más tardía
+    let minStartHour = 24
+    let maxEndHour = 0
+
+    horariosDelDia.forEach(h => {
+      // Parsear hora de inicio
+      const startTime = h.start_time || ""
+      let startHour = 8 // default
+      if (startTime.includes('AM') || startTime.includes('PM')) {
+        // Formato "8:00 AM"
+        const match = startTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
+        if (match) {
+          startHour = parseInt(match[1])
+          if (match[3].toUpperCase() === 'PM' && startHour !== 12) startHour += 12
+          if (match[3].toUpperCase() === 'AM' && startHour === 12) startHour = 0
+        }
+      } else {
+        // Formato "08:00" o "8:00"
+        const parts = startTime.split(':')
+        if (parts.length >= 1) {
+          startHour = parseInt(parts[0]) || 8
+        }
+      }
+
+      // Parsear hora de fin
+      const endTime = h.end_time || ""
+      let endHour = 18 // default
+      if (endTime.includes('AM') || endTime.includes('PM')) {
+        // Formato "8:00 PM"
+        const match = endTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
+        if (match) {
+          endHour = parseInt(match[1])
+          if (match[3].toUpperCase() === 'PM' && endHour !== 12) endHour += 12
+          if (match[3].toUpperCase() === 'AM' && endHour === 12) endHour = 0
+        }
+      } else {
+        // Formato "18:00" o "20:00"
+        const parts = endTime.split(':')
+        if (parts.length >= 1) {
+          endHour = parseInt(parts[0]) || 18
+        }
+      }
+
+      if (startHour < minStartHour) minStartHour = startHour
+      if (endHour > maxEndHour) maxEndHour = endHour
+    })
+
+    // Si no se encontraron horarios válidos, usar valores por defecto
+    if (minStartHour === 24 || maxEndHour === 0) {
+      return generateTimeSlots(timeInterval, 8, 18)
+    }
+
+    console.log(`📅 Horarios del día ${selectedDayName}: ${minStartHour}:00 - ${maxEndHour}:00`)
+    return generateTimeSlots(timeInterval, minStartHour, maxEndHour)
+  }, [selectedDate, selectedDayName, horarios, timeInterval])
 
   // Función para obtener la cita en una celda específica (horario + puerta)
   const getAppointmentForCell = React.useCallback((timeSlot: string, puertaId: string, puertaName: string) => {

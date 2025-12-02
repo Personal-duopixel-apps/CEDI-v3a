@@ -136,8 +136,17 @@ export function BookingStep1({
       
       const dayHorario = horarios.find(h => {
         // Verificar si el horario está activo
-        const isActive = h.is_active === true || h.is_active === 'TRUE' || h.is_active === 'true' || h.is_active === 'Sí' || h.is_active === undefined
-        if (!isActive) return false
+        // El horario está INACTIVO si is_active es explícitamente false, 'FALSE', 'false', 'No', o 'no'
+        const isInactive = h.is_active === false || 
+                          h.is_active === 'FALSE' || 
+                          h.is_active === 'false' || 
+                          h.is_active === 'No' || 
+                          h.is_active === 'no'
+        
+        if (isInactive) {
+          console.log(`⛔ Horario "${h.name}" está INACTIVO, saltando...`)
+          return false
+        }
         
         // Verificar si el día coincide (soporta tanto 'day' como 'days')
         let dayMatches = false
@@ -158,24 +167,34 @@ export function BookingStep1({
         // 1. dock_ids contiene el ID o nombre de la puerta (múltiples puertas)
         // 2. dock_id coincide con ID de la puerta (legacy)
         // 3. dock_id coincide con nombre de la puerta
-        // 4. name del horario coincide con nombre de la puerta
-        // 5. Si no tiene dock_id ni dock_ids, mostrar para todas las puertas
+        // 4. Si no tiene dock_id ni dock_ids, mostrar para todas las puertas
         
-        // Verificar dock_ids (múltiples puertas)
+        // Verificar dock_ids (múltiples puertas) - PRIORIDAD
         if (h.dock_ids) {
           const dockIdsList = h.dock_ids.split(',').map(id => id.trim())
-          if (dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)) {
-            return true
+          const puertaIncluida = dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)
+          if (!puertaIncluida) {
+            console.log(`⚠️ Horario "${h.name}" tiene dock_ids pero no incluye a ${selectedPuerta.name}`)
+            return false  // Si tiene dock_ids y la puerta NO está incluida, NO es válido
           }
+          return true  // La puerta está incluida
         }
         
         // Verificar dock_id (legacy, una sola puerta)
-        const puertaMatches = !h.dock_id || 
-          h.dock_id === selectedPuerta.id || 
-          h.dock_id === selectedPuerta.name ||
-          h.name === selectedPuerta.name
+        if (h.dock_id) {
+          const puertaMatches = h.dock_id === selectedPuerta.id || 
+                               h.dock_id === selectedPuerta.name ||
+                               h.name === selectedPuerta.name
+          if (!puertaMatches) {
+            console.log(`⚠️ Horario "${h.name}" tiene dock_id pero no coincide con ${selectedPuerta.name}`)
+            return false
+          }
+          return true
+        }
         
-        return puertaMatches
+        // Si no tiene dock_id ni dock_ids, aplica a todas las puertas
+        console.log(`ℹ️ Horario "${h.name}" no tiene puertas específicas, aplica a todas`)
+        return true
       })
 
       if (!dayHorario) {
@@ -533,9 +552,13 @@ export function BookingStep1({
                     
                     // Verificar si hay horario para la puerta seleccionada en este día
                     const hasSchedule = horarios.some(h => {
-                      // Verificar si el horario está activo
-                      const isActive = h.is_active === true || h.is_active === 'TRUE' || h.is_active === 'true' || h.is_active === 'Sí' || h.is_active === undefined
-                      if (!isActive) return false
+                      // Verificar si el horario está INACTIVO
+                      const isInactive = h.is_active === false || 
+                                        h.is_active === 'FALSE' || 
+                                        h.is_active === 'false' || 
+                                        h.is_active === 'No' || 
+                                        h.is_active === 'no'
+                      if (isInactive) return false
                       
                       // Verificar si el día coincide (soporta tanto 'day' como 'days')
                       let dayMatches = false
@@ -552,20 +575,22 @@ export function BookingStep1({
                       
                       if (!dayMatches) return false
                       
-                      // Verificar dock_ids (múltiples puertas)
+                      // Verificar dock_ids (múltiples puertas) - PRIORIDAD
                       if (h.dock_ids && selectedPuerta) {
                         const dockIdsList = h.dock_ids.split(',').map(id => id.trim())
-                        if (dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)) {
-                          return true
-                        }
+                        const puertaIncluida = dockIdsList.includes(selectedPuerta.id) || dockIdsList.includes(selectedPuerta.name)
+                        return puertaIncluida  // Solo válido si la puerta está incluida
                       }
                       
                       // Verificar dock_id (legacy)
-                      const puertaMatches = !h.dock_id || 
-                        h.dock_id === selectedPuerta?.id || 
-                        h.dock_id === selectedPuerta?.name ||
-                        h.name === selectedPuerta?.name
-                      return puertaMatches
+                      if (h.dock_id && selectedPuerta) {
+                        return h.dock_id === selectedPuerta.id || 
+                               h.dock_id === selectedPuerta.name ||
+                               h.name === selectedPuerta.name
+                      }
+                      
+                      // Si no tiene dock_id ni dock_ids, aplica a todas las puertas
+                      return true
                     })
 
                     return (

@@ -361,16 +361,45 @@ export function HorariosPage() {
   const handleEditHorario = (horario: Horario) => {
     console.log("📝 Editando horario:", horario)
     console.log("📝 distribution_center_id:", horario.distribution_center_id)
-    console.log("📝 dock_ids:", horario.dock_ids)
+    console.log("📝 dock_ids (raw):", horario.dock_ids)
     console.log("📝 days:", horario.days)
+    console.log("📝 Puertas disponibles:", puertas.map(p => ({ id: p.id, name: p.name })))
     
     setEditingHorario(horario)
     
-    // Procesar dock_ids - puede venir como string separado por comas o como un solo valor
+    // Procesar dock_ids - puede venir como string separado por comas
+    // Los valores pueden ser IDs o nombres de puertas
     let dockIds: string[] = []
     if (horario.dock_ids) {
-      dockIds = horario.dock_ids.split(',').map(id => id.trim())
+      const rawDockIds = horario.dock_ids.split(',').map(id => id.trim())
+      console.log("📝 dock_ids raw split:", rawDockIds)
+      
+      // Convertir cada valor a ID de puerta
+      dockIds = rawDockIds.map(rawId => {
+        // Primero buscar por ID exacto
+        let puerta = puertas.find(p => p.id === rawId)
+        
+        // Si no se encuentra, buscar por nombre
+        if (!puerta) {
+          puerta = puertas.find(p => p.name === rawId || p.name.toLowerCase() === rawId.toLowerCase())
+        }
+        
+        // Si no se encuentra, buscar por nombre parcial (ej: "Puerta 1C" en "Puerta 1C - Recepción")
+        if (!puerta) {
+          puerta = puertas.find(p => p.name.includes(rawId) || rawId.includes(p.name))
+        }
+        
+        if (puerta) {
+          console.log(`📝 Puerta encontrada: "${rawId}" -> ID: ${puerta.id}`)
+          return puerta.id
+        }
+        
+        console.log(`📝 Puerta NO encontrada para: "${rawId}"`)
+        return rawId // Devolver el valor original si no se encuentra
+      })
     }
+    
+    console.log("📝 dock_ids procesados:", dockIds)
     
     // Procesar days - puede venir como string separado por comas
     let days: string[] = []
@@ -499,10 +528,13 @@ export function HorariosPage() {
         return puerta?.name || id
       }).join(',')
       
+      // Guardar los IDs de las puertas (para uso interno) y los nombres (para visualización)
+      const puertasIds = horarioForm.dock_ids.join(',')
+      
       const dataToSave = {
         name: horarioForm.name,
         distribution_center_id: horarioForm.distribution_center_id,
-        dock_ids: horarioForm.dock_ids.join(','),
+        dock_ids: puertasIds,  // IDs de las puertas
         days: horarioForm.days.join(','),
         start_time: horarioForm.start_time,
         end_time: horarioForm.end_time,
@@ -513,7 +545,7 @@ export function HorariosPage() {
         "Nombre": horarioForm.name,
         "ID Centro de Distribución": horarioForm.distribution_center_id,
         "Centro de Distribución": centroNombre,
-        "Puertas": puertasNombres,  // Guardar nombres para mejor lectura
+        "Puertas": puertasIds,  // Guardar IDs para que se puedan leer correctamente
         "Días": horarioForm.days.join(','),
         "Hora Inicio": horarioForm.start_time,
         "Hora Fin": horarioForm.end_time,
@@ -521,6 +553,9 @@ export function HorariosPage() {
         "Mensaje Inactivo": horarioForm.inactive_message,
         "Descripción": horarioForm.notes,
       }
+      
+      console.log("💾 Puertas IDs a guardar:", puertasIds)
+      console.log("💾 Puertas nombres (referencia):", puertasNombres)
       
       console.log("💾 Guardando horario:", dataToSave)
       
