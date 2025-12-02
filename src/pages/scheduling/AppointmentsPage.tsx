@@ -130,7 +130,7 @@ export function AppointmentsPage() {
           fecha: (apt.fecha || apt["Fecha"]) as string || format(new Date(), "yyyy-MM-dd"),
           hora_inicio: (apt.hora_inicio || apt["Hora"]) as string || "08:00",
           hora_fin: calculateEndTime((apt.hora_inicio || apt["Hora"]) as string || "08:00"),
-          estado: (apt.estado || apt["Estado"]) as string || "scheduled",
+          estado: (apt.estado || apt["Estado"]) as string || "pending_transport",
           conductor_nombre: (apt.conductor_nombre || apt["Nombre del conductor"]) as string,
           conductor_telefono: "",
           placas_vehiculo: (apt.placas_vehiculo || apt["Vehiculo"]) as string,
@@ -205,6 +205,8 @@ export function AppointmentsPage() {
             "Nombre del solicitante": proveedor?.name || "",
             "Laboratorio": proveedor?.name || "",
             "Notas": formData.notas || "",
+            // Estado inicial - Pendiente de datos de transporte
+            "Estado": "pending_transport",
             // Campos de transporte vacíos (se llenarán en Fase 2)
             "Vehiculo": "",
             "tipo de vehiculo": "",
@@ -534,7 +536,7 @@ export function AppointmentsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "transport_completed" || a.estado === "scheduled").length}
+                  {appointments.filter(a => a.estado === "transport_completed").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Listas p/Aprobar</p>
               </div>

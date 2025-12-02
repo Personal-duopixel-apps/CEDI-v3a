@@ -323,9 +323,12 @@ export function CalendarView({
       const timeMatch = aptTimeNormalized === normalizedTimeSlot || aptHour === timeSlotHour
       
       // Comparar por puerta (por ID o por nombre)
+      // También comparar ignorando espacios y case
       const puertaMatch = apt.puerta_nombre === puertaName || 
                           apt.puerta_nombre === puertaId ||
-                          apt.puerta_nombre.toLowerCase() === puertaName.toLowerCase()
+                          apt.puerta_nombre?.toLowerCase() === puertaName?.toLowerCase() ||
+                          apt.puerta_nombre?.toLowerCase().includes(puertaName?.toLowerCase()) ||
+                          puertaName?.toLowerCase().includes(apt.puerta_nombre?.toLowerCase())
       
       return timeMatch && puertaMatch
     })
