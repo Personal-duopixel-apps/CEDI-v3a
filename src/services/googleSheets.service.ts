@@ -249,8 +249,13 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
   users: {
     'Nombres': 'name',
     'Usuario': 'username',
+    'Email': 'email',
     'Password': 'password',
     'Perfil de usuario': 'role',
+    'Proveedor': 'supplier_id',
+    'ID Proveedor': 'supplier_id',
+    'Teléfono': 'phone',
+    'Activo': 'is_active',
   },
 }
 

@@ -22,7 +22,7 @@ import {
 } from "@/pages/catalog"
 import { SuppliersPage } from "@/pages/suppliers"
 import { AppointmentsPage } from "@/pages/scheduling"
-import { DocksPage, VehicleTypesPage, ConnectionTestPage, CentrosDistribucionPage, HorariosPage, DiasFestivosPage } from "@/pages/config"
+import { DocksPage, VehicleTypesPage, ConnectionTestPage, CentrosDistribucionPage, HorariosPage, DiasFestivosPage, UsersPage } from "@/pages/config"
 import { AuditPage } from "@/pages/AuditPage"
 import { ProfilePage } from "@/pages/ProfilePage"
 import { TransportDataPage } from "@/pages/public/TransportDataPage"
@@ -119,7 +119,7 @@ function App() {
           <Route path="/config/vehiculos" element={<VehicleTypesPage />} />
           <Route path="/config/horarios" element={<HorariosPage />} />
           <Route path="/config/festivos" element={<DiasFestivosPage />} />
-          <Route path="/config/usuarios" element={<PlaceholderPage title="Usuarios" />} />
+          <Route path="/config/usuarios" element={<UsersPage />} />
           <Route path="/config/conexion" element={<ConnectionTestPage />} />
 
           {/* Seguridad */}

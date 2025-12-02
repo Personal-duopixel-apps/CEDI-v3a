@@ -152,6 +152,16 @@ const SHEET_SPECIFIC_MAPPINGS = {
     'is_available': 'Disponible',
     'notes': 'Descripción',
   },
+  'usuarios': {
+    'name': 'Nombres',
+    'username': 'Usuario',
+    'email': 'Email',
+    'password': 'Password',
+    'role': 'Perfil de usuario',
+    'supplier_id': 'Proveedor',
+    'phone': 'Teléfono',
+    'is_active': 'Activo',
+  },
   'dias festivos': {
     'notes': 'Notas',
   },
