@@ -30,7 +30,10 @@ import {
   XCircle,
   ArrowLeft,
   Grid3X3,
+  Pencil,
+  Trash2,
 } from "lucide-react"
+import { useAuthStore } from "@/store/auth.store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -84,6 +87,8 @@ interface CalendarViewProps {
   horarios?: Horario[]
   onAppointmentClick?: (appointment: CalendarAppointment) => void
   onStatusChange?: (appointmentId: string, newStatus: string) => void
+  onEditAppointment?: (appointment: CalendarAppointment) => void
+  onDeleteAppointment?: (appointmentId: string) => void
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -111,11 +116,41 @@ export function CalendarView({
   horarios = [],
   onAppointmentClick,
   onStatusChange,
+  onEditAppointment,
+  onDeleteAppointment,
 }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
   const [selectedAppointment, setSelectedAppointment] = React.useState<CalendarAppointment | null>(null)
   const [viewMode, setViewMode] = React.useState<"month" | "day">("month")
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+  
+  // Obtener información del usuario actual para verificar permisos
+  const { user, hasRole } = useAuthStore()
+  
+  // Verificar si el usuario es administrador
+  const isAdmin = hasRole(['superadmin', 'admin', 'scheduling-admin'])
+  
+  // Verificar si el usuario puede editar/eliminar una cita específica
+  const canEditAppointment = (appointment: CalendarAppointment) => {
+    // Los administradores pueden editar cualquier cita
+    if (isAdmin) return true
+    
+    // Los demás usuarios solo pueden editar sus propias citas
+    // Comparamos por el nombre del proveedor o el email de contacto
+    if (user?.supplier_id) {
+      // Si el usuario tiene un supplier_id, verificar si la cita es de su proveedor
+      return appointment.proveedor_nombre === user.name || 
+             appointment.contacto_email === user.email
+    }
+    
+    return false
+  }
+  
+  const canDeleteAppointment = (appointment: CalendarAppointment) => {
+    // Solo los administradores pueden eliminar citas
+    return isAdmin
+  }
 
   // Generar días del calendario
   const calendarDays = React.useMemo(() => {
@@ -515,64 +550,139 @@ export function CalendarView({
                     )}
                   </div>
 
+                  {/* Acciones de administrador: Editar y Eliminar */}
+                  {!showDeleteConfirm && (
+                    <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
+                      {/* Botón Editar */}
+                      {canEditAppointment(selectedAppointment) && onEditAppointment && 
+                       selectedAppointment.estado !== "receiving_finished" && 
+                       selectedAppointment.estado !== "cancelled" && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            onEditAppointment(selectedAppointment)
+                            setSelectedAppointment(null)
+                          }}
+                          className="gap-2"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Editar Cita
+                        </Button>
+                      )}
+                      
+                      {/* Botón Eliminar - solo admins */}
+                      {canDeleteAppointment(selectedAppointment) && onDeleteAppointment && (
+                        <Button
+                          variant="outline"
+                          className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Confirmación de eliminación */}
+                  {showDeleteConfirm && (
+                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800 font-medium mb-3">
+                        ¿Estás seguro de eliminar esta cita? Esta acción no se puede deshacer.
+                      </p>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeleteConfirm(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (onDeleteAppointment) {
+                              onDeleteAppointment(selectedAppointment.id)
+                            }
+                            setShowDeleteConfirm(false)
+                            setSelectedAppointment(null)
+                          }}
+                        >
+                          Sí, Eliminar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Acciones según estado */}
-                  <div className="mt-6 flex flex-wrap gap-2 justify-end">
-                    {selectedAppointment.estado === "transport_completed" && onStatusChange && (
-                      <>
+                  {!showDeleteConfirm && (
+                    <div className="mt-4 flex flex-wrap gap-2 justify-end">
+                      {selectedAppointment.estado === "transport_completed" && onStatusChange && (
+                        <>
+                          {canEditAppointment(selectedAppointment) && (
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                onStatusChange(selectedAppointment.id, "cancelled")
+                                setSelectedAppointment(null)
+                              }}
+                            >
+                              Cancelar Cita
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                              onClick={() => {
+                                onStatusChange(selectedAppointment.id, "approved")
+                                setSelectedAppointment(null)
+                              }}
+                            >
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Aprobar Cita
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {(selectedAppointment.estado === "scheduled" || selectedAppointment.estado === "approved") && onStatusChange && (
+                        <>
+                          {canEditAppointment(selectedAppointment) && (
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                onStatusChange(selectedAppointment.id, "cancelled")
+                                setSelectedAppointment(null)
+                              }}
+                            >
+                              Cancelar Cita
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              onClick={() => {
+                                onStatusChange(selectedAppointment.id, "receiving_started")
+                                setSelectedAppointment(null)
+                              }}
+                            >
+                              Iniciar Recepción
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {selectedAppointment.estado === "receiving_started" && onStatusChange && isAdmin && (
                         <Button
-                          variant="destructive"
+                          variant="success"
                           onClick={() => {
-                            onStatusChange(selectedAppointment.id, "cancelled")
+                            onStatusChange(selectedAppointment.id, "receiving_finished")
                             setSelectedAppointment(null)
                           }}
                         >
-                          Cancelar Cita
+                          Finalizar Recepción
                         </Button>
-                        <Button
-                          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                          onClick={() => {
-                            onStatusChange(selectedAppointment.id, "approved")
-                            setSelectedAppointment(null)
-                          }}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Aprobar Cita
-                        </Button>
-                      </>
-                    )}
-                    {(selectedAppointment.estado === "scheduled" || selectedAppointment.estado === "approved") && onStatusChange && (
-                      <>
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            onStatusChange(selectedAppointment.id, "cancelled")
-                            setSelectedAppointment(null)
-                          }}
-                        >
-                          Cancelar Cita
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            onStatusChange(selectedAppointment.id, "receiving_started")
-                            setSelectedAppointment(null)
-                          }}
-                        >
-                          Iniciar Recepción
-                        </Button>
-                      </>
-                    )}
-                    {selectedAppointment.estado === "receiving_started" && onStatusChange && (
-                      <Button
-                        variant="success"
-                        onClick={() => {
-                          onStatusChange(selectedAppointment.id, "receiving_finished")
-                          setSelectedAppointment(null)
-                        }}
-                      >
-                        Finalizar Recepción
-                      </Button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </motion.div>
@@ -832,24 +942,76 @@ export function CalendarView({
                   </div>
                 )}
 
+                {/* Acciones de administrador: Editar y Eliminar */}
+                {!showDeleteConfirm && (
+                  <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
+                    {/* Botón Editar - visible para admins o dueños de la cita */}
+                    {canEditAppointment(selectedAppointment) && onEditAppointment && 
+                     selectedAppointment.estado !== "receiving_finished" && 
+                     selectedAppointment.estado !== "cancelled" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          onEditAppointment(selectedAppointment)
+                          setSelectedAppointment(null)
+                        }}
+                        className="gap-2"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Editar Cita
+                      </Button>
+                    )}
+                    
+                    {/* Botón Eliminar - solo visible para administradores */}
+                    {canDeleteAppointment(selectedAppointment) && onDeleteAppointment && (
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        onClick={() => setShowDeleteConfirm(true)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Confirmación de eliminación */}
+                {showDeleteConfirm && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium mb-3">
+                      ¿Estás seguro de eliminar esta cita? Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (onDeleteAppointment) {
+                            onDeleteAppointment(selectedAppointment.id)
+                          }
+                          setShowDeleteConfirm(false)
+                          setSelectedAppointment(null)
+                        }}
+                      >
+                        Sí, Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Acciones según estado */}
-                <div className="mt-6 flex flex-wrap gap-2 justify-end">
-                  {/* Citas pendientes de transporte */}
-                  {selectedAppointment.estado === "pending_transport" && onStatusChange && (
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        onStatusChange(selectedAppointment.id, "cancelled")
-                        setSelectedAppointment(null)
-                      }}
-                    >
-                      Cancelar Cita
-                    </Button>
-                  )}
-
-                  {/* Citas listas para aprobar (transporte completado) */}
-                  {selectedAppointment.estado === "transport_completed" && onStatusChange && (
-                    <>
+                {!showDeleteConfirm && (
+                  <div className="mt-4 flex flex-wrap gap-2 justify-end">
+                    {/* Citas pendientes de transporte */}
+                    {selectedAppointment.estado === "pending_transport" && onStatusChange && canEditAppointment(selectedAppointment) && (
                       <Button
                         variant="destructive"
                         onClick={() => {
@@ -859,55 +1021,79 @@ export function CalendarView({
                       >
                         Cancelar Cita
                       </Button>
-                      <Button
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                        onClick={() => {
-                          onStatusChange(selectedAppointment.id, "approved")
-                          setSelectedAppointment(null)
-                        }}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Aprobar Cita
-                      </Button>
-                    </>
-                  )}
+                    )}
 
-                  {/* Citas programadas/aprobadas */}
-                  {(selectedAppointment.estado === "scheduled" || selectedAppointment.estado === "approved") && onStatusChange && (
-                    <>
-                      <Button
-                        variant="destructive"
-                        onClick={() => {
-                          onStatusChange(selectedAppointment.id, "cancelled")
-                          setSelectedAppointment(null)
-                        }}
-                      >
-                        Cancelar Cita
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          onStatusChange(selectedAppointment.id, "receiving_started")
-                          setSelectedAppointment(null)
-                        }}
-                      >
-                        Iniciar Recepción
-                      </Button>
-                    </>
-                  )}
+                    {/* Citas listas para aprobar (transporte completado) */}
+                    {selectedAppointment.estado === "transport_completed" && onStatusChange && (
+                      <>
+                        {canEditAppointment(selectedAppointment) && (
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              onStatusChange(selectedAppointment.id, "cancelled")
+                              setSelectedAppointment(null)
+                            }}
+                          >
+                            Cancelar Cita
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                            onClick={() => {
+                              onStatusChange(selectedAppointment.id, "approved")
+                              setSelectedAppointment(null)
+                            }}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Aprobar Cita
+                          </Button>
+                        )}
+                      </>
+                    )}
 
-                  {/* Citas en recepción */}
-                  {selectedAppointment.estado === "receiving_started" && onStatusChange && (
-                    <Button
-                      variant="success"
-                      onClick={() => {
-                        onStatusChange(selectedAppointment.id, "receiving_finished")
-                        setSelectedAppointment(null)
-                      }}
-                    >
-                      Finalizar Recepción
-                    </Button>
-                  )}
-                </div>
+                    {/* Citas programadas/aprobadas */}
+                    {(selectedAppointment.estado === "scheduled" || selectedAppointment.estado === "approved") && onStatusChange && (
+                      <>
+                        {canEditAppointment(selectedAppointment) && (
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              onStatusChange(selectedAppointment.id, "cancelled")
+                              setSelectedAppointment(null)
+                            }}
+                          >
+                            Cancelar Cita
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            onClick={() => {
+                              onStatusChange(selectedAppointment.id, "receiving_started")
+                              setSelectedAppointment(null)
+                            }}
+                          >
+                            Iniciar Recepción
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    {/* Citas en recepción - solo admins pueden finalizar */}
+                    {selectedAppointment.estado === "receiving_started" && onStatusChange && isAdmin && (
+                      <Button
+                        variant="success"
+                        onClick={() => {
+                          onStatusChange(selectedAppointment.id, "receiving_finished")
+                          setSelectedAppointment(null)
+                        }}
+                      >
+                        Finalizar Recepción
+                      </Button>
+                    )}
+                  </div>
+                )}
+              
               </div>
             </motion.div>
           </motion.div>

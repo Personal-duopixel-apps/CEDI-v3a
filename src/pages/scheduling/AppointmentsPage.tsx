@@ -28,6 +28,7 @@ interface BookingSelection {
   fecha: Date | null
   horario: string | null
   horarios?: string[]  // Múltiples horarios seleccionados
+  fechas?: Date[]      // Múltiples fechas seleccionadas
 }
 
 export function AppointmentsPage() {
@@ -156,7 +157,7 @@ export function AppointmentsPage() {
   }
 
   // Manejar creación de cita - Fase 1 (solo datos básicos)
-  // Soporta múltiples horarios seleccionados
+  // Soporta múltiples fechas y horarios seleccionados
   const handleCreateAppointment = async (formData: AppointmentFormDataPhase1) => {
     setIsSubmitting(true)
     try {
@@ -176,7 +177,10 @@ export function AppointmentsPage() {
         return
       }
 
-      const fechaCita = bookingSelection.fecha || new Date()
+      // Obtener todas las fechas seleccionadas (usar array si existe, sino la fecha única)
+      const fechasSeleccionadas = bookingSelection.fechas && bookingSelection.fechas.length > 0
+        ? bookingSelection.fechas
+        : [bookingSelection.fecha || new Date()]
       
       // Obtener todos los horarios seleccionados (usar array si existe, sino el horario único)
       const horariosSeleccionados = bookingSelection.horarios && bookingSelection.horarios.length > 0
@@ -186,53 +190,55 @@ export function AppointmentsPage() {
       const createdIds: string[] = []
       const newCalendarAppointments: CalendarAppointment[] = []
 
-      // Crear una cita por cada horario seleccionado
-      for (const horario of horariosSeleccionados) {
-        // Formato para Google Sheets - columnas exactas de la hoja "citas"
-        const newAppointment = {
-          // ID se genera automáticamente en Apps Script
-          "Fecha": format(fechaCita, "yyyy-MM-dd"),
-          "Puerta": bookingSelection.puerta?.name || "",
-          "Mes": format(fechaCita, "MMMM", { locale: es }),
-          "Dia": format(fechaCita, "EEEE", { locale: es }),
-          "Hora": horario,
-          "Centro de distribucion": bookingSelection.centro?.name || "",
-          "Nombre del solicitante": proveedor?.name || "",
-          "Laboratorio": proveedor?.name || "",
-          "Notas": formData.notas || "",
-          // Campos de transporte vacíos (se llenarán en Fase 2)
-          "Vehiculo": "",
-          "tipo de vehiculo": "",
-          "Nombre del conductor": "",
-        }
-        
-        // Guardar en base de datos (Google Sheets)
-        const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
-        const createdId = (createdAppointment as Record<string, unknown>)?.id as string || `temp-${Date.now()}-${horario.replace(':', '')}`
-        createdIds.push(createdId)
+      // Crear una cita por cada combinación de fecha y horario
+      for (const fechaCita of fechasSeleccionadas) {
+        for (const horario of horariosSeleccionados) {
+          // Formato para Google Sheets - columnas exactas de la hoja "citas"
+          const newAppointment = {
+            // ID se genera automáticamente en Apps Script
+            "Fecha": format(fechaCita, "yyyy-MM-dd"),
+            "Puerta": bookingSelection.puerta?.name || "",
+            "Mes": format(fechaCita, "MMMM", { locale: es }),
+            "Dia": format(fechaCita, "EEEE", { locale: es }),
+            "Hora": horario,
+            "Centro de distribucion": bookingSelection.centro?.name || "",
+            "Nombre del solicitante": proveedor?.name || "",
+            "Laboratorio": proveedor?.name || "",
+            "Notas": formData.notas || "",
+            // Campos de transporte vacíos (se llenarán en Fase 2)
+            "Vehiculo": "",
+            "tipo de vehiculo": "",
+            "Nombre del conductor": "",
+          }
+          
+          // Guardar en base de datos (Google Sheets)
+          const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
+          const createdId = (createdAppointment as Record<string, unknown>)?.id as string || `temp-${Date.now()}-${format(fechaCita, "yyyyMMdd")}-${horario.replace(':', '')}`
+          createdIds.push(createdId)
 
-        // Datos adicionales para el estado local del calendario
-        const appointmentForCalendar = {
-          id: createdId,
-          numero_cita: `CTA-${createdId.slice(-6)}`,
-          proveedor_nombre: proveedor?.name || "Sin proveedor",
-          puerta_nombre: bookingSelection.puerta?.name || "Sin puerta",
-          centro_nombre: bookingSelection.centro?.name || "Sin centro",
-          tipo_vehiculo_nombre: "Pendiente",
-          fecha: format(fechaCita, "yyyy-MM-dd"),
-          hora_inicio: horario,
-          hora_fin: calculateEndTime(horario),
-          estado: "pending_transport",
-          conductor_nombre: "",
-          conductor_telefono: "",
-          placas_vehiculo: "",
-          ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
-          notas: formData.notas,
-          contacto_email: formData.contacto_email,
-          contacto_nombre: formData.contacto_nombre,
+          // Datos adicionales para el estado local del calendario
+          const appointmentForCalendar = {
+            id: createdId,
+            numero_cita: `CTA-${createdId.slice(-6)}`,
+            proveedor_nombre: proveedor?.name || "Sin proveedor",
+            puerta_nombre: bookingSelection.puerta?.name || "Sin puerta",
+            centro_nombre: bookingSelection.centro?.name || "Sin centro",
+            tipo_vehiculo_nombre: "Pendiente",
+            fecha: format(fechaCita, "yyyy-MM-dd"),
+            hora_inicio: horario,
+            hora_fin: calculateEndTime(horario),
+            estado: "pending_transport",
+            conductor_nombre: "",
+            conductor_telefono: "",
+            placas_vehiculo: "",
+            ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
+            notas: formData.notas,
+            contacto_email: formData.contacto_email,
+            contacto_nombre: formData.contacto_nombre,
+          }
+          
+          newCalendarAppointments.push(appointmentForCalendar as CalendarAppointment)
         }
-        
-        newCalendarAppointments.push(appointmentForCalendar as CalendarAppointment)
       }
 
       // Agregar todas las citas al estado local del calendario
@@ -242,28 +248,39 @@ export function AppointmentsPage() {
       const primaryId = createdIds[0]
       const transportLink = generateTransportLink(primaryId)
 
-      // Formatear los horarios para el email
+      // Formatear las fechas y horarios para el email
+      const fechasTexto = fechasSeleccionadas.length > 1
+        ? fechasSeleccionadas.map(f => format(f, "d MMM", { locale: es })).join(", ")
+        : format(fechasSeleccionadas[0], "d 'de' MMMM 'de' yyyy", { locale: es })
+      
       const horariosTexto = horariosSeleccionados.length > 1
         ? horariosSeleccionados.join(", ")
         : horariosSeleccionados[0]
+      
+      const totalCitas = fechasSeleccionadas.length * horariosSeleccionados.length
 
       // Intentar enviar email (en segundo plano, no bloquear)
       const emailHtml = generatePhase1EmailHTML({
         appointmentId: primaryId,
         proveedorEmail: formData.contacto_email,
         proveedorNombre: formData.contacto_nombre,
-        fecha: format(fechaCita, "d 'de' MMMM 'de' yyyy", { locale: es }),
+        fecha: fechasTexto,
         hora: horariosTexto,
         puerta: bookingSelection.puerta?.name || "",
         centro: bookingSelection.centro?.name || "",
         token: primaryId, // Usamos el ID como identificador
       })
 
+      // Crear asunto del email con información de múltiples fechas
+      const emailSubject = totalCitas > 1
+        ? `${totalCitas} Citas Programadas - CEDI ${bookingSelection.centro?.name}`
+        : `Cita Programada - CEDI ${bookingSelection.centro?.name} - ${format(fechasSeleccionadas[0], "dd/MM/yyyy")}`
+
       // Enviar email en segundo plano (no esperar resultado)
       sendEmail({
         to: formData.contacto_email,
-        subject: `Cita Programada - CEDI ${bookingSelection.centro?.name} - ${format(fechaCita, "dd/MM/yyyy")}`,
-        body: `Su cita ha sido programada para ${horariosTexto}. Complete los datos de transporte en: ${transportLink}`,
+        subject: emailSubject,
+        body: `Se han programado ${totalCitas} cita(s) para ${fechasTexto} en los horarios: ${horariosTexto}. Complete los datos de transporte en: ${transportLink}`,
         html: emailHtml,
       }).then(emailResult => {
         if (emailResult.success) {
@@ -283,11 +300,10 @@ export function AppointmentsPage() {
         proveedorNombre: proveedor?.name || formData.contacto_nombre,
       })
 
-      const citasCreadas = horariosSeleccionados.length
       toast.success(
-        citasCreadas > 1 ? `¡${citasCreadas} Citas creadas!` : "¡Cita creada!", 
-        citasCreadas > 1 
-          ? `Se han programado ${citasCreadas} citas para los horarios: ${horariosTexto}`
+        totalCitas > 1 ? `¡${totalCitas} Citas creadas!` : "¡Cita creada!", 
+        totalCitas > 1 
+          ? `Se han programado ${totalCitas} citas (${fechasSeleccionadas.length} días × ${horariosSeleccionados.length} horarios)`
           : "La cita ha sido programada exitosamente"
       )
     } catch (error) {
@@ -391,6 +407,53 @@ export function AppointmentsPage() {
     } catch (error) {
       console.error("Error actualizando estado:", error)
       toast.error("Error", "No se pudo actualizar el estado")
+    }
+  }
+
+  // Estado para edición de citas
+  const [editingAppointment, setEditingAppointment] = React.useState<CalendarAppointment | null>(null)
+
+  // Manejar edición de cita
+  const handleEditAppointment = (appointment: CalendarAppointment) => {
+    setEditingAppointment(appointment)
+    // Abrir el wizard de edición con los datos de la cita
+    // Por ahora, mostrar un toast indicando que la funcionalidad está en desarrollo
+    toast.info(
+      "Editar Cita", 
+      `Editando cita ${appointment.numero_cita} para ${appointment.proveedor_nombre}`
+    )
+    
+    // Pre-cargar los datos en el booking selection para edición
+    const centro = centros.find(c => c.name === appointment.centro_nombre)
+    const puerta = puertas.find(p => p.name === appointment.puerta_nombre)
+    
+    if (centro && puerta) {
+      setBookingSelection({
+        centro: { id: centro.id, name: centro.name, city: centro.city },
+        puerta: { id: puerta.id, name: puerta.name, type: puerta.type },
+        fecha: new Date(appointment.fecha),
+        horario: appointment.hora_inicio,
+      })
+      
+      // Cambiar al tab de booking para editar
+      handleTabChange("booking")
+      setBookingStep(2) // Ir directamente al paso 2 para editar datos
+    }
+  }
+
+  // Manejar eliminación de cita
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    try {
+      // Eliminar de la base de datos
+      await db.delete("appointments", appointmentId)
+      
+      // Actualizar estado local
+      setAppointments(prev => prev.filter(apt => apt.id !== appointmentId))
+      
+      toast.success("Cita Eliminada", "La cita ha sido eliminada correctamente")
+    } catch (error) {
+      console.error("Error eliminando cita:", error)
+      toast.error("Error", "No se pudo eliminar la cita")
     }
   }
 
@@ -534,6 +597,8 @@ export function AppointmentsPage() {
             puertas={puertas}
             horarios={horarios}
             onStatusChange={handleStatusChange}
+            onEditAppointment={handleEditAppointment}
+            onDeleteAppointment={handleDeleteAppointment}
           />
         </TabsContent>
 

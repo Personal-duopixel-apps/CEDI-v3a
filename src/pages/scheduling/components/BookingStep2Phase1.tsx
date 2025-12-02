@@ -51,6 +51,7 @@ interface BookingSelection {
   fecha: Date | null
   horario: string | null
   horarios?: string[]  // Múltiples horarios seleccionados
+  fechas?: Date[]      // Múltiples fechas seleccionadas
 }
 
 interface Proveedor {
@@ -140,11 +141,24 @@ export function BookingStep2Phase1({
                 </div>
                 <div className="flex items-center gap-2 text-gray-700">
                   <Calendar className="h-4 w-4 text-purple-600" />
-                  <span>
-                    {bookingSelection.fecha
-                      ? format(bookingSelection.fecha, "EEEE d 'de' MMMM", { locale: es })
-                      : "-"}
-                  </span>
+                  {bookingSelection.fechas && bookingSelection.fechas.length > 1 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {bookingSelection.fechas.map((f) => (
+                        <Badge key={f.toISOString()} variant="outline" className="text-xs">
+                          {format(f, "EEE d MMM", { locale: es })}
+                        </Badge>
+                      ))}
+                      <span className="text-xs text-muted-foreground">
+                        ({bookingSelection.fechas.length} días)
+                      </span>
+                    </div>
+                  ) : (
+                    <span>
+                      {bookingSelection.fecha
+                        ? format(bookingSelection.fecha, "EEEE d 'de' MMMM", { locale: es })
+                        : "-"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-gray-700">
                   <Clock className="h-4 w-4 text-purple-600" />
@@ -160,6 +174,14 @@ export function BookingStep2Phase1({
                     <span className="font-medium">{bookingSelection.horario}</span>
                   )}
                 </div>
+                {/* Mostrar total de citas a crear */}
+                {((bookingSelection.fechas?.length || 1) * (bookingSelection.horarios?.length || 1)) > 1 && (
+                  <div className="mt-2 p-2 bg-purple-100 rounded-lg">
+                    <span className="text-sm font-medium text-purple-800">
+                      Se crearán {(bookingSelection.fechas?.length || 1) * (bookingSelection.horarios?.length || 1)} citas
+                    </span>
+                  </div>
+                )}
               </div>
               <Button variant="ghost" size="sm" onClick={onBack}>
                 <ChevronLeft className="h-4 w-4 mr-1" />

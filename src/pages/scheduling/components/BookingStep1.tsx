@@ -57,6 +57,7 @@ interface BookingSelection {
   fecha: Date | null
   horario: string | null  // Primer horario seleccionado (para compatibilidad)
   horarios?: string[]     // Lista de horarios seleccionados (para múltiple selección)
+  fechas?: Date[]         // Lista de fechas seleccionadas (para múltiple selección)
 }
 
 interface ExistingAppointment {
@@ -84,7 +85,7 @@ export function BookingStep1({
 }: BookingStep1Props) {
   const [selectedCentro, setSelectedCentro] = React.useState<CentroDistribucion | null>(null)
   const [selectedPuerta, setSelectedPuerta] = React.useState<Puerta | null>(null)
-  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
+  const [selectedDates, setSelectedDates] = React.useState<Date[]>([])  // Múltiples fechas
   const [selectedTimes, setSelectedTimes] = React.useState<string[]>([])  // Múltiples horarios
   const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   
@@ -109,68 +110,90 @@ export function BookingStep1({
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   }, [weekStart])
 
-  // Generar slots de tiempo basados en horarios
+  // Generar slots de tiempo basados en horarios para todas las fechas seleccionadas
+  // Un slot solo está disponible si está libre en TODAS las fechas seleccionadas
   const timeSlots = React.useMemo(() => {
-    if (!selectedPuerta || !selectedDate) return []
+    if (!selectedPuerta || selectedDates.length === 0) return []
 
-    const dayName = format(selectedDate, "EEEE", { locale: es })
+    console.log("📅 Generando slots para fechas:", selectedDates.map(d => format(d, "yyyy-MM-dd")))
+    console.log("🚪 Puerta seleccionada:", selectedPuerta.name, selectedPuerta.id)
+    console.log("⏰ Horarios disponibles:", horarios)
+
+    // Obtener el rango de horas común a todas las fechas seleccionadas
+    let minStartHour = -1  // -1 indica no inicializado
+    let maxEndHour = -1
     
-    // Buscar horarios que pertenezcan a la puerta seleccionada y coincidan con el día
-    // Comparamos por: dock_id, nombre del horario (que es el nombre de la puerta), o ID de puerta
-    const dayHorario = horarios.find(h => {
-      const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
-      if (!dayMatches) return false
+    // Verificar que todas las fechas tienen horario disponible
+    for (const date of selectedDates) {
+      const dayName = format(date, "EEEE", { locale: es })
+      console.log(`🔍 Buscando horario para ${dayName}`)
       
-      // El horario puede relacionarse por:
-      // 1. dock_id coincide con ID de la puerta
-      // 2. dock_id coincide con nombre de la puerta
-      // 3. name del horario coincide con nombre de la puerta (Google Sheet usa 'Nombre' como nombre de puerta)
-      // 4. Si no tiene dock_id, mostrar para todas las puertas
-      const puertaMatches = !h.dock_id || 
-        h.dock_id === selectedPuerta.id || 
-        h.dock_id === selectedPuerta.name ||
-        h.name === selectedPuerta.name
-      
-      return puertaMatches
-    })
+      const dayHorario = horarios.find(h => {
+        const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
+        if (!dayMatches) return false
+        
+        // El horario puede relacionarse por:
+        // 1. dock_id coincide con ID de la puerta
+        // 2. dock_id coincide con nombre de la puerta
+        // 3. name del horario coincide con nombre de la puerta
+        // 4. Si no tiene dock_id, mostrar para todas las puertas
+        const puertaMatches = !h.dock_id || 
+          h.dock_id === selectedPuerta.id || 
+          h.dock_id === selectedPuerta.name ||
+          h.name === selectedPuerta.name
+        
+        return puertaMatches
+      })
 
-    if (!dayHorario) {
-      console.log(`No se encontró horario para ${selectedPuerta.name} en ${dayName}`)
+      if (!dayHorario) {
+        console.log(`❌ No se encontró horario para ${selectedPuerta.name} en ${dayName}`)
+        return []
+      }
+
+      console.log(`✅ Horario encontrado para ${dayName}:`, dayHorario)
+
+      const startHour = parseInt(dayHorario.start_time?.split(":")[0] || "8")
+      const endHour = parseInt(dayHorario.end_time?.split(":")[0] || "17")
+      
+      console.log(`   Hora inicio: ${startHour}, Hora fin: ${endHour}`)
+      
+      // Para la primera fecha, inicializar los valores
+      if (minStartHour === -1) {
+        minStartHour = startHour
+        maxEndHour = endHour
+      } else {
+        // Usar el rango más restrictivo (intersección de todos los horarios)
+        minStartHour = Math.max(minStartHour, startHour)
+        maxEndHour = Math.min(maxEndHour, endHour)
+      }
+    }
+
+    console.log(`📊 Rango final: ${minStartHour}:00 - ${maxEndHour}:00`)
+
+    if (minStartHour === -1 || maxEndHour === -1 || minStartHour >= maxEndHour) {
+      console.log("❌ No hay horarios comunes entre las fechas seleccionadas")
       return []
     }
 
-    console.log(`Horario encontrado para ${selectedPuerta.name}:`, dayHorario)
-
     const slots: TimeSlot[] = []
-    const startHour = parseInt(dayHorario.start_time?.split(":")[0] || "8")
-    const endHour = parseInt(dayHorario.end_time?.split(":")[0] || "17")
-    const dateStr = format(selectedDate, "yyyy-MM-dd")
-
-    // Debug: mostrar citas existentes para esta puerta y fecha
-    const citasParaEstaPuerta = existingAppointments.filter(apt => {
-      const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
-                         apt.puerta_nombre === selectedPuerta.id
-      const fechaMatch = apt.fecha === dateStr
-      return puertaMatch && fechaMatch
-    })
-    
-    if (citasParaEstaPuerta.length > 0) {
-      console.log(`📅 Citas existentes para ${selectedPuerta.name} el ${dateStr}:`, citasParaEstaPuerta)
-    }
 
     // Generar slots según el intervalo configurado (30 o 60 minutos)
-    for (let hour = startHour; hour < endHour; hour++) {
+    for (let hour = minStartHour; hour < maxEndHour; hour++) {
       // Hora en punto
       const timeStr = `${hour.toString().padStart(2, "0")}:00`
       const timeStrNoPad = `${hour}:00`
       
-      const isOccupied = existingAppointments.some(apt => {
-        const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
-                           apt.puerta_nombre === selectedPuerta.id
-        const fechaMatch = apt.fecha === dateStr
-        const aptHora = apt.hora_inicio?.trim()
-        const horaMatch = aptHora === timeStr || aptHora === timeStrNoPad
-        return puertaMatch && fechaMatch && horaMatch
+      // Verificar si está ocupado en ALGUNA de las fechas seleccionadas
+      const isOccupied = selectedDates.some(date => {
+        const dateStr = format(date, "yyyy-MM-dd")
+        return existingAppointments.some(apt => {
+          const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
+                             apt.puerta_nombre === selectedPuerta.id
+          const fechaMatch = apt.fecha === dateStr
+          const aptHora = apt.hora_inicio?.trim()
+          const horaMatch = aptHora === timeStr || aptHora === timeStrNoPad
+          return puertaMatch && fechaMatch && horaMatch
+        })
       })
 
       slots.push({
@@ -183,13 +206,16 @@ export function BookingStep1({
         const timeStr30 = `${hour.toString().padStart(2, "0")}:30`
         const timeStrNoPad30 = `${hour}:30`
         
-        const isOccupied30 = existingAppointments.some(apt => {
-          const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
-                             apt.puerta_nombre === selectedPuerta.id
-          const fechaMatch = apt.fecha === dateStr
-          const aptHora = apt.hora_inicio?.trim()
-          const horaMatch = aptHora === timeStr30 || aptHora === timeStrNoPad30
-          return puertaMatch && fechaMatch && horaMatch
+        const isOccupied30 = selectedDates.some(date => {
+          const dateStr = format(date, "yyyy-MM-dd")
+          return existingAppointments.some(apt => {
+            const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
+                               apt.puerta_nombre === selectedPuerta.id
+            const fechaMatch = apt.fecha === dateStr
+            const aptHora = apt.hora_inicio?.trim()
+            const horaMatch = aptHora === timeStr30 || aptHora === timeStrNoPad30
+            return puertaMatch && fechaMatch && horaMatch
+          })
         })
 
         slots.push({
@@ -199,8 +225,9 @@ export function BookingStep1({
       }
     }
 
+    console.log(`✅ Slots generados: ${slots.length}`, slots)
     return slots
-  }, [selectedPuerta, selectedDate, horarios, existingAppointments, timeInterval])
+  }, [selectedPuerta, selectedDates, horarios, existingAppointments, timeInterval])
 
   const handlePrevWeek = () => {
     setWeekStart(prev => addDays(prev, -7))
@@ -228,19 +255,42 @@ export function BookingStep1({
     setSelectedTimes(prev => prev.filter(t => t !== time))
   }
 
+  // Handler para seleccionar/deseleccionar fechas (múltiple selección)
+  const handleDateToggle = (date: Date) => {
+    setSelectedDates(prev => {
+      const exists = prev.some(d => isSameDay(d, date))
+      if (exists) {
+        // Deseleccionar
+        return prev.filter(d => !isSameDay(d, date))
+      } else {
+        // Seleccionar y ordenar por fecha
+        return [...prev, date].sort((a, b) => a.getTime() - b.getTime())
+      }
+    })
+    // Limpiar horarios cuando cambian las fechas
+    setSelectedTimes([])
+  }
+
+  // Remover una fecha específica
+  const handleRemoveDate = (date: Date) => {
+    setSelectedDates(prev => prev.filter(d => !isSameDay(d, date)))
+    setSelectedTimes([])
+  }
+
   const handleConfirm = () => {
-    if (selectedCentro && selectedPuerta && selectedDate && selectedTimes.length > 0) {
+    if (selectedCentro && selectedPuerta && selectedDates.length > 0 && selectedTimes.length > 0) {
       onSelectionComplete({
         centro: selectedCentro,
         puerta: selectedPuerta,
-        fecha: selectedDate,
+        fecha: selectedDates[0],    // Primera fecha para compatibilidad
+        fechas: selectedDates,      // Todas las fechas seleccionadas
         horario: selectedTimes[0],  // Primer horario para compatibilidad
         horarios: selectedTimes,    // Todos los horarios seleccionados
       })
     }
   }
 
-  const isSelectionComplete = selectedCentro && selectedPuerta && selectedDate && selectedTimes.length > 0
+  const isSelectionComplete = selectedCentro && selectedPuerta && selectedDates.length > 0 && selectedTimes.length > 0
 
   return (
     <div className="space-y-6">
@@ -262,9 +312,9 @@ export function BookingStep1({
         <div className={cn("w-12 h-1 rounded", selectedPuerta ? "bg-primary" : "bg-muted")} />
         <div className={cn(
           "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
-          selectedDate ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          selectedDates.length > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
         )}>
-          {selectedDate ? <Check className="h-4 w-4" /> : "3"}
+          {selectedDates.length > 0 ? <Check className="h-4 w-4" /> : "3"}
         </div>
         <div className={cn("w-12 h-1 rounded", selectedTimes.length > 0 ? "bg-primary" : "bg-muted")} />
         <div className={cn(
@@ -293,7 +343,7 @@ export function BookingStep1({
                 onClick={() => {
                   setSelectedCentro(centro)
                   setSelectedPuerta(null)
-                  setSelectedDate(null)
+                  setSelectedDates([])
                   setSelectedTimes([])
                 }}
                 className={cn(
@@ -358,7 +408,7 @@ export function BookingStep1({
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           setSelectedPuerta(puerta)
-                          setSelectedDate(null)
+                          setSelectedDates([])
                           setSelectedTimes([])
                         }}
                         className={cn(
@@ -391,7 +441,7 @@ export function BookingStep1({
         )}
       </AnimatePresence>
 
-      {/* Step 3: Seleccionar Fecha */}
+      {/* Step 3: Seleccionar Fecha(s) */}
       <AnimatePresence>
         {selectedPuerta && (
           <motion.div
@@ -404,9 +454,12 @@ export function BookingStep1({
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Clock className="h-5 w-5 text-primary" />
-                    3. Selecciona la Fecha
+                    3. Selecciona las Fechas
                   </CardTitle>
                   <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs mr-2">
+                      Puedes seleccionar múltiples días
+                    </Badge>
                     <Button variant="outline" size="icon" onClick={handlePrevWeek}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
@@ -418,6 +471,24 @@ export function BookingStep1({
                     </Button>
                   </div>
                 </div>
+                
+                {/* Fechas seleccionadas */}
+                {selectedDates.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="text-sm text-muted-foreground">Fechas seleccionadas:</span>
+                    {selectedDates.map((date) => (
+                      <Badge 
+                        key={date.toISOString()} 
+                        variant="default"
+                        className="gap-1 cursor-pointer hover:bg-primary/80"
+                        onClick={() => handleRemoveDate(date)}
+                      >
+                        {format(date, "EEE d MMM", { locale: es })}
+                        <X className="h-3 w-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-2">
@@ -425,6 +496,8 @@ export function BookingStep1({
                     const isToday = isSameDay(day, new Date())
                     const isPast = day < new Date() && !isToday
                     const dayName = format(day, "EEEE", { locale: es })
+                    const isSelected = selectedDates.some(d => isSameDay(d, day))
+                    
                     // Verificar si hay horario para la puerta seleccionada en este día
                     const hasSchedule = horarios.some(h => {
                       const dayMatches = h.day?.toLowerCase() === dayName.toLowerCase()
@@ -441,22 +514,27 @@ export function BookingStep1({
                         whileHover={!isPast && hasSchedule ? { scale: 1.05 } : {}}
                         whileTap={!isPast && hasSchedule ? { scale: 0.95 } : {}}
                         disabled={isPast || !hasSchedule}
-                        onClick={() => {
-                          setSelectedDate(day)
-                          setSelectedTimes([])
-                        }}
+                        onClick={() => handleDateToggle(day)}
                         className={cn(
-                          "p-3 rounded-lg border-2 text-center transition-all",
-                          selectedDate && isSameDay(selectedDate, day)
-                            ? "border-primary bg-primary/5"
+                          "p-3 rounded-lg border-2 text-center transition-all relative",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
                             : "border-border",
                           isPast && "opacity-50 cursor-not-allowed",
                           !hasSchedule && "opacity-50 cursor-not-allowed bg-muted",
-                          isToday && "ring-2 ring-primary/30",
-                          !isPast && hasSchedule && "hover:border-primary/50"
+                          isToday && !isSelected && "ring-2 ring-primary/30",
+                          !isPast && hasSchedule && !isSelected && "hover:border-primary/50"
                         )}
                       >
-                        <p className="text-xs text-muted-foreground uppercase">
+                        {isSelected && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                            <Check className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+                        <p className={cn(
+                          "text-xs uppercase",
+                          isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                        )}>
                           {format(day, "EEE", { locale: es })}
                         </p>
                         <p className="text-lg font-bold mt-1">
@@ -477,7 +555,7 @@ export function BookingStep1({
 
       {/* Step 4: Seleccionar Horario(s) */}
       <AnimatePresence>
-        {selectedDate && (
+        {selectedDates.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -488,17 +566,27 @@ export function BookingStep1({
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Clock className="h-5 w-5 text-primary" />
-                    4. Selecciona el Horario - {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+                    4. Selecciona el Horario
                   </CardTitle>
                   <Badge variant="outline" className="text-xs">
-                    Puedes seleccionar múltiples horarios
+                    Se aplicará a {selectedDates.length} {selectedDates.length === 1 ? 'día' : 'días'}
                   </Badge>
+                </div>
+                
+                {/* Mostrar fechas seleccionadas */}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground">Fechas:</span>
+                  {selectedDates.map((date) => (
+                    <Badge key={date.toISOString()} variant="secondary">
+                      {format(date, "EEE d MMM", { locale: es })}
+                    </Badge>
+                  ))}
                 </div>
                 
                 {/* Horarios seleccionados */}
                 {selectedTimes.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="text-sm text-muted-foreground">Seleccionados:</span>
+                    <span className="text-sm text-muted-foreground">Horarios seleccionados:</span>
                     {selectedTimes.map((time) => (
                       <Badge 
                         key={time} 
@@ -580,11 +668,23 @@ export function BookingStep1({
                         <DoorOpen className="h-4 w-4" />
                         {selectedPuerta?.name}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {selectedDate && format(selectedDate, "d MMM yyyy", { locale: es })}
-                      </span>
                     </div>
+                    
+                    {/* Mostrar fechas seleccionadas */}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="text-sm text-muted-foreground">Fechas:</span>
+                      {selectedDates.map((date) => (
+                        <Badge key={date.toISOString()} variant="outline">
+                          {format(date, "EEE d MMM", { locale: es })}
+                        </Badge>
+                      ))}
+                      {selectedDates.length > 1 && (
+                        <span className="text-xs text-muted-foreground">
+                          ({selectedDates.length} días)
+                        </span>
+                      )}
+                    </div>
+                    
                     {/* Mostrar horarios seleccionados */}
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className="text-sm text-muted-foreground">Horarios:</span>
@@ -599,6 +699,18 @@ export function BookingStep1({
                         </span>
                       )}
                     </div>
+                    
+                    {/* Total de citas a crear */}
+                    {(selectedDates.length > 1 || selectedTimes.length > 1) && (
+                      <div className="mt-3 p-2 bg-primary/10 rounded-lg">
+                        <span className="text-sm font-medium">
+                          Se crearán {selectedDates.length * selectedTimes.length} citas en total
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({selectedDates.length} {selectedDates.length === 1 ? 'día' : 'días'} × {selectedTimes.length} {selectedTimes.length === 1 ? 'horario' : 'horarios'})
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <Button size="lg" onClick={handleConfirm}>
                     Continuar con el Registro
