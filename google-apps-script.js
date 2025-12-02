@@ -146,6 +146,13 @@ const SHEET_SPECIFIC_MAPPINGS = {
   'dias festivos': {
     'notes': 'Notas',
   },
+  'tipos vehiculo': {
+    'code': 'Código',
+    'name': 'Nombre',
+    'description': 'Descripción',
+    'max_weight': 'Peso (ton)',
+    'is_active': 'Activo',
+  },
 };
 
 /**
