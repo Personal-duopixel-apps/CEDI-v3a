@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   Check,
   AlertCircle,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +50,7 @@ interface BookingSelection {
   puerta: { id: string; name: string } | null
   fecha: Date | null
   horario: string | null
+  horarios?: string[]  // Múltiples horarios seleccionados
 }
 
 interface Proveedor {
@@ -146,7 +148,17 @@ export function BookingStep2Phase1({
                 </div>
                 <div className="flex items-center gap-2 text-gray-700">
                   <Clock className="h-4 w-4 text-purple-600" />
-                  <span className="font-medium">{bookingSelection.horario}</span>
+                  {bookingSelection.horarios && bookingSelection.horarios.length > 1 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {bookingSelection.horarios.map((h) => (
+                        <Badge key={h} variant="secondary" className="text-xs">
+                          {h}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-medium">{bookingSelection.horario}</span>
+                  )}
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={onBack}>
@@ -344,7 +356,7 @@ export function BookingStep2Phase1({
           >
             {isSubmitting ? (
               <>
-                <span className="animate-spin mr-2">⏳</span>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Creando cita...
               </>
             ) : (

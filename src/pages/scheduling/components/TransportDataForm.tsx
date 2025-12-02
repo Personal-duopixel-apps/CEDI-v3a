@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { motion } from "framer-motion"
-import { Truck, User, Phone, FileText, Check, AlertCircle } from "lucide-react"
+import { Truck, User, Phone, FileText, Check, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -301,7 +301,7 @@ export function TransportDataForm({
                   >
                     {isSubmitting ? (
                       <>
-                        <span className="animate-spin mr-2">⏳</span>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                         Enviando...
                       </>
                     ) : (

@@ -27,6 +27,7 @@ interface BookingSelection {
   puerta: { id: string; name: string; type?: string } | null
   fecha: Date | null
   horario: string | null
+  horarios?: string[]  // Múltiples horarios seleccionados
 }
 
 export function AppointmentsPage() {
@@ -155,6 +156,7 @@ export function AppointmentsPage() {
   }
 
   // Manejar creación de cita - Fase 1 (solo datos básicos)
+  // Soporta múltiples horarios seleccionados
   const handleCreateAppointment = async (formData: AppointmentFormDataPhase1) => {
     setIsSubmitting(true)
     try {
@@ -174,100 +176,120 @@ export function AppointmentsPage() {
         return
       }
 
-      // Formato para Google Sheets - columnas exactas de la hoja "citas"
       const fechaCita = bookingSelection.fecha || new Date()
-      const newAppointment = {
-        // ID se genera automáticamente en Apps Script
-        "Fecha": format(fechaCita, "yyyy-MM-dd"),
-        "Puerta": bookingSelection.puerta?.name || "",
-        "Mes": format(fechaCita, "MMMM", { locale: es }),
-        "Dia": format(fechaCita, "EEEE", { locale: es }),
-        "Hora": bookingSelection.horario || "08:00",
-        "Centro de distribucion": bookingSelection.centro?.name || "",
-        "Nombre del solicitante": proveedor?.name || "",
-        "Laboratorio": proveedor?.name || "",
-        "Notas": formData.notas || "",
-        // Campos de transporte vacíos (se llenarán en Fase 2)
-        "Vehiculo": "",
-        "tipo de vehiculo": "",
-        "Nombre del conductor": "",
-      }
       
-      // Datos adicionales para el estado local del calendario
-      const appointmentForCalendar = {
-        id: `temp-${Date.now()}`,
-        numero_cita: `CTA-${Date.now().toString().slice(-6)}`,
-        proveedor_nombre: proveedor?.name || "Sin proveedor",
-        puerta_nombre: bookingSelection.puerta?.name || "Sin puerta",
-        centro_nombre: bookingSelection.centro?.name || "Sin centro",
-        tipo_vehiculo_nombre: "Pendiente",
-        fecha: format(fechaCita, "yyyy-MM-dd"),
-        hora_inicio: bookingSelection.horario || "08:00",
-        hora_fin: calculateEndTime(bookingSelection.horario || "08:00"),
-        estado: "pending_transport",
-        conductor_nombre: "",
-        conductor_telefono: "",
-        placas_vehiculo: "",
-        ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
-        notas: formData.notas,
-        contacto_email: formData.contacto_email,
-        contacto_nombre: formData.contacto_nombre,
+      // Obtener todos los horarios seleccionados (usar array si existe, sino el horario único)
+      const horariosSeleccionados = bookingSelection.horarios && bookingSelection.horarios.length > 0
+        ? bookingSelection.horarios
+        : [bookingSelection.horario || "08:00"]
+      
+      const createdIds: string[] = []
+      const newCalendarAppointments: CalendarAppointment[] = []
+
+      // Crear una cita por cada horario seleccionado
+      for (const horario of horariosSeleccionados) {
+        // Formato para Google Sheets - columnas exactas de la hoja "citas"
+        const newAppointment = {
+          // ID se genera automáticamente en Apps Script
+          "Fecha": format(fechaCita, "yyyy-MM-dd"),
+          "Puerta": bookingSelection.puerta?.name || "",
+          "Mes": format(fechaCita, "MMMM", { locale: es }),
+          "Dia": format(fechaCita, "EEEE", { locale: es }),
+          "Hora": horario,
+          "Centro de distribucion": bookingSelection.centro?.name || "",
+          "Nombre del solicitante": proveedor?.name || "",
+          "Laboratorio": proveedor?.name || "",
+          "Notas": formData.notas || "",
+          // Campos de transporte vacíos (se llenarán en Fase 2)
+          "Vehiculo": "",
+          "tipo de vehiculo": "",
+          "Nombre del conductor": "",
+        }
+        
+        // Guardar en base de datos (Google Sheets)
+        const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
+        const createdId = (createdAppointment as Record<string, unknown>)?.id as string || `temp-${Date.now()}-${horario.replace(':', '')}`
+        createdIds.push(createdId)
+
+        // Datos adicionales para el estado local del calendario
+        const appointmentForCalendar = {
+          id: createdId,
+          numero_cita: `CTA-${createdId.slice(-6)}`,
+          proveedor_nombre: proveedor?.name || "Sin proveedor",
+          puerta_nombre: bookingSelection.puerta?.name || "Sin puerta",
+          centro_nombre: bookingSelection.centro?.name || "Sin centro",
+          tipo_vehiculo_nombre: "Pendiente",
+          fecha: format(fechaCita, "yyyy-MM-dd"),
+          hora_inicio: horario,
+          hora_fin: calculateEndTime(horario),
+          estado: "pending_transport",
+          conductor_nombre: "",
+          conductor_telefono: "",
+          placas_vehiculo: "",
+          ordenes_compra: formData.ordenes_compra?.split(",").map(s => s.trim()).filter(Boolean),
+          notas: formData.notas,
+          contacto_email: formData.contacto_email,
+          contacto_nombre: formData.contacto_nombre,
+        }
+        
+        newCalendarAppointments.push(appointmentForCalendar as CalendarAppointment)
       }
 
-      // Guardar en base de datos (Google Sheets)
-      const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
+      // Agregar todas las citas al estado local del calendario
+      setAppointments(prev => [...prev, ...newCalendarAppointments])
 
-      // db.create devuelve el item creado directamente, no un objeto {success, id}
-      // Si llegamos aquí sin error, la cita fue creada
-      const createdId = (createdAppointment as Record<string, unknown>)?.id as string || appointmentForCalendar.id
+      // Usar el primer ID para el enlace de transporte
+      const primaryId = createdIds[0]
+      const transportLink = generateTransportLink(primaryId)
 
-      // Generar el enlace de transporte usando el ID de la cita
-      const transportLink = generateTransportLink(createdId)
-
-      // Actualizar el ID en el objeto del calendario
-      appointmentForCalendar.id = createdId
-      appointmentForCalendar.numero_cita = `CTA-${createdId.slice(-6)}`
-
-      // Agregar al estado local del calendario
-      setAppointments(prev => [...prev, appointmentForCalendar as CalendarAppointment])
+      // Formatear los horarios para el email
+      const horariosTexto = horariosSeleccionados.length > 1
+        ? horariosSeleccionados.join(", ")
+        : horariosSeleccionados[0]
 
       // Intentar enviar email (en segundo plano, no bloquear)
       const emailHtml = generatePhase1EmailHTML({
-        appointmentId: createdId,
+        appointmentId: primaryId,
         proveedorEmail: formData.contacto_email,
         proveedorNombre: formData.contacto_nombre,
         fecha: format(fechaCita, "d 'de' MMMM 'de' yyyy", { locale: es }),
-        hora: bookingSelection.horario || "08:00",
+        hora: horariosTexto,
         puerta: bookingSelection.puerta?.name || "",
         centro: bookingSelection.centro?.name || "",
-        token: createdId, // Usamos el ID como identificador
+        token: primaryId, // Usamos el ID como identificador
       })
 
       // Enviar email en segundo plano (no esperar resultado)
       sendEmail({
         to: formData.contacto_email,
         subject: `Cita Programada - CEDI ${bookingSelection.centro?.name} - ${format(fechaCita, "dd/MM/yyyy")}`,
-        body: `Su cita ha sido programada. Complete los datos de transporte en: ${transportLink}`,
+        body: `Su cita ha sido programada para ${horariosTexto}. Complete los datos de transporte en: ${transportLink}`,
         html: emailHtml,
       }).then(emailResult => {
         if (emailResult.success) {
-          console.log("✅ Email enviado exitosamente")
+          console.log("Email enviado exitosamente")
         } else {
-          console.warn("⚠️ No se pudo enviar el email:", emailResult.error)
+          console.warn("No se pudo enviar el email:", emailResult.error)
         }
       }).catch(err => {
-        console.warn("⚠️ Error enviando email:", err)
+        console.warn("Error enviando email:", err)
       })
 
       // Mostrar información del enlace de transporte
       setCreatedAppointmentInfo({
-        token: createdId, // Usamos el ID como identificador
+        token: primaryId, // Usamos el ID como identificador
         transportLink,
         email: formData.contacto_email,
         proveedorNombre: proveedor?.name || formData.contacto_nombre,
       })
 
-      toast.success("¡Cita creada!", "La cita ha sido programada exitosamente")
+      const citasCreadas = horariosSeleccionados.length
+      toast.success(
+        citasCreadas > 1 ? `¡${citasCreadas} Citas creadas!` : "¡Cita creada!", 
+        citasCreadas > 1 
+          ? `Se han programado ${citasCreadas} citas para los horarios: ${horariosTexto}`
+          : "La cita ha sido programada exitosamente"
+      )
     } catch (error) {
       console.error("Error creando cita:", error)
       toast.error("Error", "No se pudo crear la cita")

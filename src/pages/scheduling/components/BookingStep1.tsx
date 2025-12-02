@@ -10,11 +10,13 @@ import {
   ChevronRight,
   Check,
   MapPin,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useSettingsStore, formatTimeWithAmPm } from "@/store/settings.store"
 
 // Interfaces con nombres mapeados desde Google Sheets
 interface CentroDistribucion {
@@ -53,7 +55,8 @@ interface BookingSelection {
   centro: CentroDistribucion | null
   puerta: Puerta | null
   fecha: Date | null
-  horario: string | null
+  horario: string | null  // Primer horario seleccionado (para compatibilidad)
+  horarios?: string[]     // Lista de horarios seleccionados (para múltiple selección)
 }
 
 interface ExistingAppointment {
@@ -82,8 +85,11 @@ export function BookingStep1({
   const [selectedCentro, setSelectedCentro] = React.useState<CentroDistribucion | null>(null)
   const [selectedPuerta, setSelectedPuerta] = React.useState<Puerta | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
-  const [selectedTime, setSelectedTime] = React.useState<string | null>(null)
+  const [selectedTimes, setSelectedTimes] = React.useState<string[]>([])  // Múltiples horarios
   const [weekStart, setWeekStart] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+  
+  // Obtener configuración de intervalo de horarios
+  const { timeInterval } = useSettingsStore()
 
   // Filtrar puertas por centro seleccionado
   const puertasFiltradas = React.useMemo(() => {
@@ -152,35 +158,49 @@ export function BookingStep1({
       console.log(`📅 Citas existentes para ${selectedPuerta.name} el ${dateStr}:`, citasParaEstaPuerta)
     }
 
+    // Generar slots según el intervalo configurado (30 o 60 minutos)
     for (let hour = startHour; hour < endHour; hour++) {
+      // Hora en punto
       const timeStr = `${hour.toString().padStart(2, "0")}:00`
-      // También crear versión sin padding para comparar con datos de Google Sheets
       const timeStrNoPad = `${hour}:00`
       
-      // Verificar si el slot está ocupado - comparar por nombre de puerta
       const isOccupied = existingAppointments.some(apt => {
         const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
                            apt.puerta_nombre === selectedPuerta.id
         const fechaMatch = apt.fecha === dateStr
-        // Comparar hora con y sin padding (ej: "09:00" y "9:00")
         const aptHora = apt.hora_inicio?.trim()
         const horaMatch = aptHora === timeStr || aptHora === timeStrNoPad
-        
         return puertaMatch && fechaMatch && horaMatch
       })
-
-      if (isOccupied) {
-        console.log(`🚫 Slot OCUPADO: ${dateStr} ${timeStr} en ${selectedPuerta.name}`)
-      }
 
       slots.push({
         time: timeStr,
         available: !isOccupied,
       })
+      
+      // Media hora (solo si el intervalo es 30 minutos)
+      if (timeInterval === 30) {
+        const timeStr30 = `${hour.toString().padStart(2, "0")}:30`
+        const timeStrNoPad30 = `${hour}:30`
+        
+        const isOccupied30 = existingAppointments.some(apt => {
+          const puertaMatch = apt.puerta_nombre === selectedPuerta.name || 
+                             apt.puerta_nombre === selectedPuerta.id
+          const fechaMatch = apt.fecha === dateStr
+          const aptHora = apt.hora_inicio?.trim()
+          const horaMatch = aptHora === timeStr30 || aptHora === timeStrNoPad30
+          return puertaMatch && fechaMatch && horaMatch
+        })
+
+        slots.push({
+          time: timeStr30,
+          available: !isOccupied30,
+        })
+      }
     }
 
     return slots
-  }, [selectedPuerta, selectedDate, horarios, existingAppointments])
+  }, [selectedPuerta, selectedDate, horarios, existingAppointments, timeInterval])
 
   const handlePrevWeek = () => {
     setWeekStart(prev => addDays(prev, -7))
@@ -190,18 +210,37 @@ export function BookingStep1({
     setWeekStart(prev => addDays(prev, 7))
   }
 
+  // Handler para seleccionar/deseleccionar horarios (múltiple selección)
+  const handleTimeToggle = (time: string) => {
+    setSelectedTimes(prev => {
+      if (prev.includes(time)) {
+        // Deseleccionar
+        return prev.filter(t => t !== time)
+      } else {
+        // Seleccionar y ordenar
+        return [...prev, time].sort()
+      }
+    })
+  }
+
+  // Remover un horario específico
+  const handleRemoveTime = (time: string) => {
+    setSelectedTimes(prev => prev.filter(t => t !== time))
+  }
+
   const handleConfirm = () => {
-    if (selectedCentro && selectedPuerta && selectedDate && selectedTime) {
+    if (selectedCentro && selectedPuerta && selectedDate && selectedTimes.length > 0) {
       onSelectionComplete({
         centro: selectedCentro,
         puerta: selectedPuerta,
         fecha: selectedDate,
-        horario: selectedTime,
+        horario: selectedTimes[0],  // Primer horario para compatibilidad
+        horarios: selectedTimes,    // Todos los horarios seleccionados
       })
     }
   }
 
-  const isSelectionComplete = selectedCentro && selectedPuerta && selectedDate && selectedTime
+  const isSelectionComplete = selectedCentro && selectedPuerta && selectedDate && selectedTimes.length > 0
 
   return (
     <div className="space-y-6">
@@ -227,12 +266,12 @@ export function BookingStep1({
         )}>
           {selectedDate ? <Check className="h-4 w-4" /> : "3"}
         </div>
-        <div className={cn("w-12 h-1 rounded", selectedTime ? "bg-primary" : "bg-muted")} />
+        <div className={cn("w-12 h-1 rounded", selectedTimes.length > 0 ? "bg-primary" : "bg-muted")} />
         <div className={cn(
           "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors",
-          selectedTime ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          selectedTimes.length > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
         )}>
-          {selectedTime ? <Check className="h-4 w-4" /> : "4"}
+          {selectedTimes.length > 0 ? <Check className="h-4 w-4" /> : "4"}
         </div>
       </div>
 
@@ -255,7 +294,7 @@ export function BookingStep1({
                   setSelectedCentro(centro)
                   setSelectedPuerta(null)
                   setSelectedDate(null)
-                  setSelectedTime(null)
+                  setSelectedTimes([])
                 }}
                 className={cn(
                   "p-4 rounded-lg border-2 text-left transition-all",
@@ -320,7 +359,7 @@ export function BookingStep1({
                         onClick={() => {
                           setSelectedPuerta(puerta)
                           setSelectedDate(null)
-                          setSelectedTime(null)
+                          setSelectedTimes([])
                         }}
                         className={cn(
                           "p-4 rounded-lg border-2 text-left transition-all",
@@ -404,7 +443,7 @@ export function BookingStep1({
                         disabled={isPast || !hasSchedule}
                         onClick={() => {
                           setSelectedDate(day)
-                          setSelectedTime(null)
+                          setSelectedTimes([])
                         }}
                         className={cn(
                           "p-3 rounded-lg border-2 text-center transition-all",
@@ -436,7 +475,7 @@ export function BookingStep1({
         )}
       </AnimatePresence>
 
-      {/* Step 4: Seleccionar Horario */}
+      {/* Step 4: Seleccionar Horario(s) */}
       <AnimatePresence>
         {selectedDate && (
           <motion.div
@@ -446,10 +485,33 @@ export function BookingStep1({
           >
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Clock className="h-5 w-5 text-primary" />
-                  4. Selecciona el Horario - {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Clock className="h-5 w-5 text-primary" />
+                    4. Selecciona el Horario - {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+                  </CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    Puedes seleccionar múltiples horarios
+                  </Badge>
+                </div>
+                
+                {/* Horarios seleccionados */}
+                {selectedTimes.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="text-sm text-muted-foreground">Seleccionados:</span>
+                    {selectedTimes.map((time) => (
+                      <Badge 
+                        key={time} 
+                        variant="default"
+                        className="gap-1 cursor-pointer hover:bg-primary/80"
+                        onClick={() => handleRemoveTime(time)}
+                      >
+                        {formatTimeWithAmPm(time)}
+                        <X className="h-3 w-3" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {timeSlots.length === 0 ? (
@@ -458,28 +520,36 @@ export function BookingStep1({
                   </p>
                 ) : (
                   <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-                    {timeSlots.map((slot) => (
-                      <motion.button
-                        key={slot.time}
-                        whileHover={slot.available ? { scale: 1.05 } : {}}
-                        whileTap={slot.available ? { scale: 0.95 } : {}}
-                        disabled={!slot.available}
-                        onClick={() => setSelectedTime(slot.time)}
-                        className={cn(
-                          "p-3 rounded-lg border-2 text-center transition-all font-medium",
-                          selectedTime === slot.time
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : slot.available
-                              ? "border-border hover:border-primary/50"
-                              : "border-red-200 bg-red-50 text-red-400 cursor-not-allowed"
-                        )}
-                      >
-                        {slot.time}
-                        {!slot.available && (
-                          <p className="text-xs mt-1">Ocupado</p>
-                        )}
-                      </motion.button>
-                    ))}
+                    {timeSlots.map((slot) => {
+                      const isSelected = selectedTimes.includes(slot.time)
+                      return (
+                        <motion.button
+                          key={slot.time}
+                          whileHover={slot.available ? { scale: 1.05 } : {}}
+                          whileTap={slot.available ? { scale: 0.95 } : {}}
+                          disabled={!slot.available}
+                          onClick={() => handleTimeToggle(slot.time)}
+                          className={cn(
+                            "p-3 rounded-lg border-2 text-center transition-all font-medium relative",
+                            isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : slot.available
+                                ? "border-border hover:border-primary/50"
+                                : "border-red-200 bg-red-50 text-red-400 cursor-not-allowed"
+                          )}
+                        >
+                          {isSelected && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                              <Check className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                          <span className="text-sm">{formatTimeWithAmPm(slot.time)}</span>
+                          {!slot.available && (
+                            <p className="text-xs mt-1">Ocupado</p>
+                          )}
+                        </motion.button>
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -499,7 +569,7 @@ export function BookingStep1({
             <Card className="border-primary bg-primary/5">
               <CardContent className="p-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Resumen de tu selección</h3>
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       <span className="flex items-center gap-1">
@@ -512,8 +582,22 @@ export function BookingStep1({
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
-                        {selectedDate && format(selectedDate, "d MMM yyyy", { locale: es })} a las {selectedTime}
+                        {selectedDate && format(selectedDate, "d MMM yyyy", { locale: es })}
                       </span>
+                    </div>
+                    {/* Mostrar horarios seleccionados */}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="text-sm text-muted-foreground">Horarios:</span>
+                      {selectedTimes.map((time) => (
+                        <Badge key={time} variant="secondary">
+                          {formatTimeWithAmPm(time)}
+                        </Badge>
+                      ))}
+                      {selectedTimes.length > 1 && (
+                        <span className="text-xs text-muted-foreground">
+                          ({selectedTimes.length} horarios)
+                        </span>
+                      )}
                     </div>
                   </div>
                   <Button size="lg" onClick={handleConfirm}>

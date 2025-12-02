@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useSettingsStore, generateTimeSlots, formatTimeWithAmPm } from "@/store/settings.store"
 
 export interface CalendarAppointment {
   id: string
@@ -156,17 +157,13 @@ export function CalendarView({
     )
   }, [selectedDate, appointmentsByDate])
 
-  // Generar lista de TODOS los horarios del día laboral (6am - 8pm)
+  // Obtener configuración de intervalo de horarios
+  const { timeInterval, workdayStart, workdayEnd } = useSettingsStore()
+
+  // Generar lista de TODOS los horarios del día laboral según configuración
   const uniqueTimeSlots = React.useMemo(() => {
-    const slots: string[] = []
-    
-    // Generar todos los horarios desde las 6am hasta las 8pm
-    for (let hour = 6; hour <= 20; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`)
-    }
-    
-    return slots
-  }, [])
+    return generateTimeSlots(timeInterval, workdayStart, workdayEnd)
+  }, [timeInterval, workdayStart, workdayEnd])
 
   // Función para obtener la cita en una celda específica (horario + puerta)
   const getAppointmentForCell = React.useCallback((timeSlot: string, puertaId: string, puertaName: string) => {
@@ -213,14 +210,8 @@ export function CalendarView({
     setViewMode("month")
   }
   
-  // Formatear hora para mostrar AM/PM
-  const formatTimeDisplay = (time: string) => {
-    const [hours, minutes] = time.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes || '00'} ${ampm}`
-  }
+  // Usar formatTimeWithAmPm del store para formatear hora
+  const formatTimeDisplay = formatTimeWithAmPm
 
   const getStatusConfig = (status: string) => {
     return statusConfig[status] || statusConfig.scheduled

@@ -1,7 +1,13 @@
+import * as React from "react"
 import { z } from "zod"
 import { CRUDPage } from "@/components/crud/CRUDPage"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Clock, Settings } from "lucide-react"
 import { booleanFromString, optionalString, stringFromAny } from "@/lib/schema-helpers"
+import { useSettingsStore, type TimeInterval } from "@/store/settings.store"
 import type { FormField, CRUDConfig, BaseEntity } from "@/types"
 import type { DataTableColumn } from "@/components/crud/DataTable"
 
@@ -178,16 +184,88 @@ const formFields: FormField[] = [
 ]
 
 export function HorariosPage() {
+  const { timeInterval, setTimeInterval } = useSettingsStore()
+  
+  const handleIntervalChange = (checked: boolean) => {
+    setTimeInterval(checked ? 30 : 60)
+  }
+
   return (
-    <CRUDPage<Horario>
-      config={config}
-      entityName="horarios"
-      columns={columns}
-      formFields={formFields}
-      formSchema={horarioSchema}
-      searchFields={["name", "day", "dock_id"]}
-      defaultValues={{ is_available: true }}
-    />
+    <div className="space-y-6">
+      {/* Configuración de Intervalo de Horarios */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Settings className="h-5 w-5 text-primary" />
+            Configuración de Visualización
+          </CardTitle>
+          <CardDescription>
+            Configura cómo se muestran los horarios en el calendario y el wizard de citas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg bg-background border">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="interval-switch" className="text-base font-medium cursor-pointer">
+                  Mostrar horarios cada media hora
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {timeInterval === 30 
+                    ? "Los horarios se muestran cada 30 minutos (6:00, 6:30, 7:00...)" 
+                    : "Los horarios se muestran cada hora (6:00, 7:00, 8:00...)"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="interval-switch"
+              checked={timeInterval === 30}
+              onCheckedChange={handleIntervalChange}
+            />
+          </div>
+          
+          {/* Preview de los horarios */}
+          <div className="mt-4 p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Vista previa de horarios:</p>
+            <div className="flex flex-wrap gap-1">
+              {timeInterval === 30 ? (
+                <>
+                  <Badge variant="outline">6:00 AM</Badge>
+                  <Badge variant="outline">6:30 AM</Badge>
+                  <Badge variant="outline">7:00 AM</Badge>
+                  <Badge variant="outline">7:30 AM</Badge>
+                  <Badge variant="outline">8:00 AM</Badge>
+                  <span className="text-muted-foreground">...</span>
+                </>
+              ) : (
+                <>
+                  <Badge variant="outline">6:00 AM</Badge>
+                  <Badge variant="outline">7:00 AM</Badge>
+                  <Badge variant="outline">8:00 AM</Badge>
+                  <Badge variant="outline">9:00 AM</Badge>
+                  <Badge variant="outline">10:00 AM</Badge>
+                  <span className="text-muted-foreground">...</span>
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CRUD de Horarios */}
+      <CRUDPage<Horario>
+        config={config}
+        entityName="horarios"
+        columns={columns}
+        formFields={formFields}
+        formSchema={horarioSchema}
+        searchFields={["name", "day", "dock_id"]}
+        defaultValues={{ is_available: true }}
+      />
+    </div>
   )
 }
 
