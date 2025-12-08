@@ -17,7 +17,7 @@ export interface BaseEntity {
 // AUTENTICACIÓN Y USUARIOS
 // =====================================================
 
-export type UserRole = 
+export type UserRole =
   | 'superadmin'
   | 'admin'
   | 'scheduling-admin'
@@ -25,6 +25,7 @@ export type UserRole =
   | 'supplier-admin'
   | 'supplier-user'
   | 'security'
+  | 'guest'
 
 export interface User extends BaseEntity {
   email: string
@@ -135,7 +136,7 @@ export interface Product extends BaseEntity {
   category_id: string
   pharmaceutical_form_id: string
   active_ingredient_ids: string[]
-  
+
   // Datos logísticos
   unit_of_measure_id: string
   package_type_id: string
@@ -150,13 +151,13 @@ export interface Product extends BaseEntity {
   is_controlled: boolean
   is_hazardous: boolean
   shelf_life_days?: number
-  
+
   // Datos de compra
   tax_type_id: string
   currency_id: string
   unit_cost?: number
   list_price?: number
-  
+
   // Estado
   is_active: boolean
   registration_number?: string  // Registro sanitario
@@ -237,7 +238,7 @@ export interface CalendarException extends BaseEntity {
   close_time?: string
 }
 
-export type AppointmentStatus = 
+export type AppointmentStatus =
   | 'scheduled'
   | 'pending_transport_data'
   | 'complete'
@@ -280,12 +281,12 @@ export interface Appointment extends BaseEntity {
   status: AppointmentStatus
   purchase_order_ids: string[]
   transport_data?: TransportData
-  
+
   // Tiempos reales
   actual_arrival_time?: string
   actual_start_time?: string
   actual_end_time?: string
-  
+
   // Auditoría
   cancelled_at?: string
   cancelled_by?: string
@@ -315,7 +316,7 @@ export interface AuditLog extends BaseEntity {
 // NOTIFICACIONES
 // =====================================================
 
-export type NotificationType = 
+export type NotificationType =
   | 'appointment_created'
   | 'appointment_reminder'
   | 'appointment_cancelled'
@@ -339,8 +340,8 @@ export interface Notification extends BaseEntity {
 export interface FormField {
   name: string
   label: string
-  type: 'text' | 'number' | 'email' | 'password' | 'select' | 'combobox' | 
-        'switch' | 'textarea' | 'date' | 'time' | 'datetime' | 'custom'
+  type: 'text' | 'number' | 'email' | 'password' | 'select' | 'combobox' |
+  'switch' | 'textarea' | 'date' | 'time' | 'datetime' | 'custom'
   required?: boolean
   placeholder?: string
   description?: string

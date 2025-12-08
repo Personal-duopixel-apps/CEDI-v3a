@@ -24,30 +24,21 @@ import { useAuthStore } from "@/store/auth.store"
 import { useUIStore } from "@/store/ui.store"
 import { useNotificationsStore, Notification } from "@/store/notifications.store"
 import { db } from "@/services/database.service"
-
-const roleLabels: Record<string, string> = {
-  superadmin: "Super Administrador",
-  admin: "Administrador",
-  "scheduling-admin": "Admin de Citas",
-  "catalog-admin": "Admin de Catálogo",
-  "supplier-admin": "Admin de Proveedor",
-  "supplier-user": "Usuario Proveedor",
-  security: "Seguridad",
-}
+import { ROLE_LABELS } from "@/lib/constants"
 
 export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { theme, setTheme, sidebarCollapsed } = useUIStore()
-  const { 
-    notifications, 
-    setNotifications, 
-    markAsRead, 
-    markAllAsRead, 
+  const {
+    notifications,
+    setNotifications,
+    markAsRead,
+    markAllAsRead,
     clearAll,
     removeNotification,
-    getUnreadCount 
+    getUnreadCount
   } = useNotificationsStore()
   const [isLoadingNotifications, setIsLoadingNotifications] = React.useState(true)
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false)
@@ -59,19 +50,19 @@ export function Header() {
       try {
         const appointmentsData = await db.getAll("appointments")
         const today = format(new Date(), "yyyy-MM-dd")
-        
+
         const notifs: Notification[] = []
-        
+
         // Procesar citas para crear notificaciones
         const appointments = appointmentsData as unknown as Array<Record<string, unknown>>
-        
+
         appointments.forEach((apt, index) => {
           const fecha = String(apt.fecha || apt.Fecha || "")
           const hora = String(apt.hora_inicio || apt.Hora || "")
           const proveedor = String(apt.proveedor_nombre || apt["Nombre del solicitante"] || apt.Laboratorio || "Proveedor")
           const puerta = String(apt.puerta_nombre || apt.Puerta || "")
           const estado = String(apt.estado || apt.Estado || "scheduled")
-          
+
           // Citas pendientes de transporte
           if (estado === "pending_transport" || estado === "pending_transport_data") {
             notifs.push({
@@ -85,7 +76,7 @@ export function Header() {
               createdAt: Date.now(),
             })
           }
-          
+
           // Citas de hoy programadas
           if (fecha === today && (estado === "scheduled" || estado === "approved")) {
             notifs.push({
@@ -99,7 +90,7 @@ export function Header() {
               createdAt: Date.now(),
             })
           }
-          
+
           // Citas en proceso
           if (estado === "receiving" || estado === "receiving_started") {
             notifs.push({
@@ -113,7 +104,7 @@ export function Header() {
               createdAt: Date.now(),
             })
           }
-          
+
           // Citas listas para aprobar
           if (estado === "transport_completed") {
             notifs.push({
@@ -128,7 +119,7 @@ export function Header() {
             })
           }
         })
-        
+
         // Limitar a las últimas 10 notificaciones
         setNotifications(notifs.slice(0, 10))
       } catch (error) {
@@ -140,7 +131,7 @@ export function Header() {
     }
 
     loadNotifications()
-    
+
     // Recargar cada 60 segundos
     const interval = setInterval(loadNotifications, 60000)
     return () => clearInterval(interval)
@@ -156,7 +147,7 @@ export function Header() {
   }
 
   const canGoBack = location.pathname !== "/"
-  
+
   const unreadCount = getUnreadCount()
 
   const handleNotificationClick = (notif: Notification) => {
@@ -287,7 +278,7 @@ export function Header() {
                 )}
               </div>
             </div>
-            
+
             {/* Notifications List */}
             <div className="max-h-80 overflow-y-auto">
               {isLoadingNotifications ? (
@@ -304,8 +295,8 @@ export function Header() {
               ) : (
                 <div className="divide-y">
                   {notifications.map((notif) => (
-                    <div 
-                      key={notif.id} 
+                    <div
+                      key={notif.id}
                       className={cn(
                         "flex gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors relative group",
                         !notif.read && "bg-primary/5"
@@ -316,12 +307,12 @@ export function Header() {
                       {!notif.read && (
                         <div className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
                       )}
-                      
+
                       {/* Color indicator */}
                       <div className={cn("h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0", notif.color.replace("bg-", "bg-").replace("500", "100"))}>
                         {getNotificationIcon(notif.type)}
                       </div>
-                      
+
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className={cn(
@@ -333,7 +324,7 @@ export function Header() {
                         <p className="text-xs text-muted-foreground truncate">{notif.description}</p>
                         <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
                       </div>
-                      
+
                       {/* Remove button */}
                       <Button
                         variant="ghost"
@@ -348,12 +339,12 @@ export function Header() {
                 </div>
               )}
             </div>
-            
+
             {/* Footer */}
             {notifications.length > 0 && (
               <div className="p-3 border-t">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => {
                     navigate("/citas")
@@ -376,7 +367,7 @@ export function Header() {
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium">{user?.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {user?.role ? roleLabels[user.role] : ""}
+                  {user?.role ? ROLE_LABELS[user.role] : ""}
                 </p>
               </div>
             </button>

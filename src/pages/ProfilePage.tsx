@@ -21,16 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { UserAvatar } from "@/components/ui/avatar"
 import { useAuthStore } from "@/store/auth.store"
 import { useToast } from "@/store/ui.store"
-
-const roleLabels: Record<string, string> = {
-  superadmin: "Super Administrador",
-  admin: "Administrador",
-  "scheduling-admin": "Admin de Citas",
-  "catalog-admin": "Admin de Catálogo",
-  "supplier-admin": "Admin de Proveedor",
-  "supplier-user": "Usuario Proveedor",
-  security: "Seguridad",
-}
+import { ROLE_LABELS } from "@/lib/constants"
 
 const profileSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -130,7 +121,7 @@ export function ProfilePage() {
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <Badge variant="outline" className="gap-1">
                   <Shield className="h-3 w-3" />
-                  {user?.role ? roleLabels[user.role] : "Usuario"}
+                  {user?.role ? ROLE_LABELS[user.role] : "Usuario"}
                 </Badge>
                 <Badge variant="secondary">
                   Activo
@@ -331,7 +322,7 @@ export function ProfilePage() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Rol</p>
-              <p className="font-medium">{user?.role ? roleLabels[user.role] : "N/A"}</p>
+              <p className="font-medium">{user?.role ? ROLE_LABELS[user.role] : "N/A"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Centro de Distribución</p>
@@ -339,10 +330,10 @@ export function ProfilePage() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Último Acceso</p>
-              <p className="font-medium">{new Date().toLocaleDateString("es-GT", { 
-                weekday: "long", 
-                year: "numeric", 
-                month: "long", 
+              <p className="font-medium">{new Date().toLocaleDateString("es-GT", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
                 day: "numeric",
                 hour: "2-digit",
                 minute: "2-digit"

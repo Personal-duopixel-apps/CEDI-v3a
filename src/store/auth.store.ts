@@ -41,6 +41,28 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   security: [
     'scheduling.read', 'appointments.checkin'
   ],
+  guest: [],
+}
+
+const getUserRole = async (userId: string): Promise<UserRole> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('roles(name)')
+      .eq('user_id', userId)
+      .single()
+
+    if (error || !data?.roles) {
+      console.warn('Could not fetch user role, defaulting to guest', error)
+      return 'guest'
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data.roles as any).name as UserRole
+  } catch (err) {
+    console.error('Error fetching role:', err)
+    return 'guest'
+  }
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -56,12 +78,14 @@ export const useAuthStore = create<AuthStore>()(
           const { data: { session } } = await supabase.auth.getSession()
 
           if (session?.user) {
+            const role = await getUserRole(session.user.id)
+
             // Map Supabase user to App user
             const user: User = {
               id: session.user.id,
               email: session.user.email!,
               name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario',
-              role: (session.user.user_metadata?.role as UserRole) || 'supplier-user',
+              role,
               is_active: true,
               rdc_id: session.user.user_metadata?.rdc_id || 'rdc-1', // Default or from meta
               supplier_id: session.user.user_metadata?.supplier_id,
@@ -97,11 +121,13 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (data.session?.user) {
+            const role = await getUserRole(data.session.user.id)
+
             const user: User = {
               id: data.session.user.id,
               email: data.session.user.email!,
               name: data.session.user.user_metadata?.name || email.split('@')[0],
-              role: (data.session.user.user_metadata?.role as UserRole) || 'supplier-user',
+              role,
               is_active: true,
               rdc_id: data.session.user.user_metadata?.rdc_id || 'rdc-1',
               supplier_id: data.session.user.user_metadata?.supplier_id,
