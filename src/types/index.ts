@@ -34,6 +34,7 @@ export interface User extends BaseEntity {
   role: UserRole
   avatar_url?: string
   phone?: string
+  department?: string
   is_active: boolean
   last_login?: string
   supplier_id?: string  // Para usuarios de proveedores

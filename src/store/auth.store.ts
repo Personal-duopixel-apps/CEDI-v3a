@@ -17,6 +17,7 @@ interface AuthStore {
   hasPermission: (permission: string) => boolean
   hasRole: (roles: UserRole | UserRole[]) => boolean
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
+  updateProfile: (data: { name?: string; phone?: string; department?: string }) => Promise<{ success: boolean; error?: string }>
 }
 
 // Permisos por rol
@@ -89,6 +90,8 @@ export const useAuthStore = create<AuthStore>()(
               role,
               is_active: true,
               rdc_id: session.user.user_metadata?.rdc_id || 'rdc-1', // Default or from meta
+              phone: session.user.user_metadata?.phone,
+              department: session.user.user_metadata?.department,
               supplier_id: session.user.user_metadata?.supplier_id,
               created_at: session.user.created_at,
               updated_at: session.user.updated_at || new Date().toISOString()
@@ -131,6 +134,8 @@ export const useAuthStore = create<AuthStore>()(
               role,
               is_active: true,
               rdc_id: data.session.user.user_metadata?.rdc_id || 'rdc-1',
+              phone: data.session.user.user_metadata?.phone,
+              department: data.session.user.user_metadata?.department,
               supplier_id: data.session.user.user_metadata?.supplier_id,
               created_at: data.session.user.created_at,
               updated_at: data.session.user.updated_at || new Date().toISOString(),
@@ -213,6 +218,39 @@ export const useAuthStore = create<AuthStore>()(
           return { success: true }
         } catch (error) {
           return { success: false, error: 'Error inesperado al actualizar la contraseña' }
+        }
+      },
+
+      updateProfile: async (data: { name?: string; phone?: string; department?: string }) => {
+        const { user } = get()
+        if (!user) return { success: false, error: 'No user logged in' }
+
+        try {
+          const { error } = await supabase.auth.updateUser({
+            data: {
+              name: data.name,
+              phone: data.phone,
+              department: data.department
+            }
+          })
+
+          if (error) {
+            return { success: false, error: error.message }
+          }
+
+          // Update local state
+          const updatedUser = {
+            ...user,
+            name: data.name || user.name,
+            phone: data.phone || user.phone,
+            department: data.department || user.department
+          }
+
+          set({ user: updatedUser })
+          return { success: true }
+        } catch (error) {
+          console.error('Error updating profile:', error)
+          return { success: false, error: 'Error inesperado al actualizar el perfil' }
         }
       },
     }),

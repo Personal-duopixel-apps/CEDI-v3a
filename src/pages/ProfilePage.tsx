@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   User,
-  Mail,
   Phone,
   Building2,
   Shield,
@@ -25,7 +24,6 @@ import { ROLE_LABELS } from "@/lib/constants"
 
 const profileSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  email: z.string().email("Email inválido"),
   phone: z.string().optional(),
   department: z.string().optional(),
 })
@@ -56,9 +54,8 @@ export function ProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.name || "",
-      email: user?.email || "",
-      phone: "",
-      department: "",
+      phone: user?.phone || "",
+      department: user?.department || "",
     },
   })
 
@@ -71,13 +68,21 @@ export function ProfilePage() {
     resolver: zodResolver(passwordSchema),
   })
 
-  const { updatePassword } = useAuthStore()
+  const { updatePassword, updateProfile } = useAuthStore()
 
-  const onSubmitProfile = (data: ProfileFormData) => {
-    // Aquí se guardaría en la base de datos
-    console.log("Perfil actualizado:", data)
-    toast.success("Perfil actualizado", "Tu información ha sido actualizada correctamente")
-    setIsEditingProfile(false)
+  const onSubmitProfile = async (data: ProfileFormData) => {
+    try {
+      const { success, error } = await updateProfile(data)
+
+      if (success) {
+        toast.success("Perfil actualizado", "Tu información ha sido actualizada correctamente")
+        setIsEditingProfile(false)
+      } else {
+        toast.error("Error", error || "No se pudo actualizar el perfil")
+      }
+    } catch (error) {
+      toast.error("Error", "Ocurrió un error inesperado al actualizar el perfil")
+    }
   }
 
   const onSubmitPassword = async (data: PasswordFormData) => {
@@ -128,10 +133,13 @@ export function ProfilePage() {
             <div className="flex-1 text-center sm:text-left">
               <h2 className="text-xl font-bold">{user?.name}</h2>
               <p className="text-muted-foreground">{user?.email}</p>
+              {user?.department && (
+                <p className="text-sm text-muted-foreground mt-1">{user.department}</p>
+              )}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <Badge variant="outline" className="gap-1">
                   <Shield className="h-3 w-3" />
-                  {user?.role ? ROLE_LABELS[user.role] : "Usuario"}
+                  {user?.role ? ROLE_LABELS[user.role] : "Invitado"}
                 </Badge>
                 <Badge variant="secondary">
                   Activo
@@ -187,21 +195,7 @@ export function ProfilePage() {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        {...registerProfile("email")}
-                        type="email"
-                        className="pl-10"
-                        placeholder="tu@email.com"
-                      />
-                    </div>
-                    {profileErrors.email && (
-                      <p className="text-sm text-red-500">{profileErrors.email.message}</p>
-                    )}
-                  </div>
+                  {/* Email field removed as it cannot be edited */}
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Teléfono</Label>
