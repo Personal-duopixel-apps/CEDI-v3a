@@ -71,6 +71,8 @@ export function ProfilePage() {
     resolver: zodResolver(passwordSchema),
   })
 
+  const { updatePassword } = useAuthStore()
+
   const onSubmitProfile = (data: ProfileFormData) => {
     // Aquí se guardaría en la base de datos
     console.log("Perfil actualizado:", data)
@@ -78,12 +80,20 @@ export function ProfilePage() {
     setIsEditingProfile(false)
   }
 
-  const onSubmitPassword = (data: PasswordFormData) => {
-    // Aquí se cambiaría la contraseña
-    console.log("Contraseña cambiada")
-    toast.success("Contraseña actualizada", "Tu contraseña ha sido cambiada correctamente")
-    setIsChangingPassword(false)
-    resetPassword()
+  const onSubmitPassword = async (data: PasswordFormData) => {
+    try {
+      const { success, error } = await updatePassword(data.currentPassword, data.newPassword)
+
+      if (success) {
+        toast.success("Contraseña actualizada", "Tu contraseña ha sido cambiada correctamente")
+        setIsChangingPassword(false)
+        resetPassword()
+      } else {
+        toast.error("Error", error || "No se pudo actualizar la contraseña")
+      }
+    } catch (error) {
+      toast.error("Error", "Ocurrió un error inesperado")
+    }
   }
 
   return (

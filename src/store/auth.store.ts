@@ -16,6 +16,7 @@ interface AuthStore {
   setCurrentRdc: (rdcId: string) => void
   hasPermission: (permission: string) => boolean
   hasRole: (roles: UserRole | UserRole[]) => boolean
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
 }
 
 // Permisos por rol
@@ -183,6 +184,36 @@ export const useAuthStore = create<AuthStore>()(
 
         const roleArray = Array.isArray(roles) ? roles : [roles]
         return roleArray.includes(user.role)
+      },
+
+      updatePassword: async (currentPassword: string, newPassword: string) => {
+        const { user } = get()
+        if (!user || !user.email) {
+          return { success: false, error: 'No user logged in' }
+        }
+
+        try {
+          // 1. Verify current password
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword
+          })
+
+          if (signInError) {
+            return { success: false, error: 'La contraseña actual es incorrecta' }
+          }
+
+          // 2. Update to new password
+          const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+
+          if (updateError) {
+            return { success: false, error: updateError.message }
+          }
+
+          return { success: true }
+        } catch (error) {
+          return { success: false, error: 'Error inesperado al actualizar la contraseña' }
+        }
       },
     }),
     {
