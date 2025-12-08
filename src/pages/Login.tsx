@@ -16,7 +16,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
-  const [errors, setErrors] = React.useState<{email?: string; password?: string}>({})
+  const [errors, setErrors] = React.useState<{ email?: string; password?: string }>({})
 
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -25,38 +25,39 @@ export function LoginPage() {
   }, [isAuthenticated, navigate])
 
   const validateForm = () => {
-    const newErrors: {email?: string; password?: string} = {}
-    
+    const newErrors: { email?: string; password?: string } = {}
+
     if (!email) {
       newErrors.email = "El email es requerido"
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = "Email inválido"
     }
-    
+
     if (!password) {
       newErrors.password = "La contraseña es requerida"
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
     try {
       setIsLoading(true)
-      const success = await login(email, password)
+      const { success, error } = await login(email, password)
+
       if (success) {
         toast.success("Bienvenido", "Has iniciado sesión correctamente")
         navigate("/")
       } else {
-        toast.error("Error de autenticación", "Email o contraseña incorrectos")
+        toast.error("Error de autenticación", error || "Email o contraseña incorrectos")
       }
     } catch (error) {
-      toast.error("Error", "No se pudo iniciar sesión")
+      toast.error("Error", "Ocurrió un error inesperado")
     } finally {
       setIsLoading(false)
     }
@@ -71,7 +72,7 @@ export function LoginPage() {
           <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-400 rounded-full blur-3xl" />
         </div>
-        
+
         <div className="relative z-10">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur text-white font-bold text-xl">
@@ -95,8 +96,8 @@ export function LoginPage() {
               <span className="text-purple-200">Farmacéutica</span>
             </h2>
             <p className="text-white/70 mt-4 max-w-md">
-              Gestiona tu centro de distribución con la plataforma más completa 
-              para la industria farmacéutica. Control de inventario, citas de 
+              Gestiona tu centro de distribución con la plataforma más completa
+              para la industria farmacéutica. Control de inventario, citas de
               recepción y mucho más.
             </p>
           </motion.div>
@@ -181,35 +182,6 @@ export function LoginPage() {
                   Iniciar Sesión
                 </Button>
               </form>
-
-              {/* Demo Credentials */}
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-sm text-muted-foreground text-center mb-3">
-                  Credenciales de demostración:
-                </p>
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Admin:</span>
-                    <code className="text-primary">admin@cedi.com</code>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Catálogo:</span>
-                    <code className="text-primary">catalogo@cedi.com</code>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Citas:</span>
-                    <code className="text-primary">citas@cedi.com</code>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Proveedor:</span>
-                    <code className="text-primary">proveedor@cedi.com</code>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t">
-                    <span className="text-muted-foreground">Contraseña:</span>
-                    <code className="text-primary font-semibold">cedi2024</code>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </motion.div>

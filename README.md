@@ -49,6 +49,61 @@ npm run dev
 
 El servidor de desarrollo estará disponible en `http://localhost:3000`
 
+## ⚡ Desarrollo Local con Supabase
+
+### Prerrequisitos
+- [Supabase CLI](https://supabase.com/docs/guides/cli) instalado (`npm install -g supabase`)
+- Docker corriendo
+
+### Iniciar Localmente
+```bash
+npx supabase start
+```
+Esto levantará los servicios de Supabase en Docker y mostrará las URLs y claves locales.
+
+### Enlazar Proyecto Remoto
+Para sincronizar con el proyecto en la nube:
+```bash
+npx supabase login
+npx supabase link --project-ref <project-id>
+```
+
+### Gestión de Migraciones
+```bash
+# Crear nueva migración vacía
+npx supabase migration new nombre_del_cambio
+
+# Auto-generar migración basada en cambios de BD locales (Diff)
+npx supabase db diff --use-migra -f nombre_migracion
+
+# Aplicar solo las migraciones nuevas (sin borrar datos)
+npx supabase migration up
+
+# Aplicar migraciones pendientes localmente (Reset completo)
+npx supabase db reset  # Cuidado: borra datos locales y resetea la BD
+
+### ¿Cómo sabe Supabase qué ejecutar?
+Supabase mantiene una tabla especial llamada `supabase_migrations.schema_migrations` donde registra qué scripts ya se ejecutaron. Al correr `migration up`, compara esa tabla con los archivos en tu carpeta `supabase/migrations` y solo ejecuta los que faltan.
+
+# Aplicar migraciones al proyecto remoto
+npx supabase db push
+```
+
+### Funciones (Edge Functions)
+```bash
+# Ejecutar función localmente
+npx supabase functions serve nombre-funcion
+
+# Desplegar función
+npx supabase functions deploy nombre-funcion
+```
+
+### Generación de Tipos
+Recuerda actualizar los tipos cuando cambies la base de datos:
+```bash
+npx supabase gen types typescript --project-id <project-id> > src/types/supabase.ts
+```
+
 ## 🔐 Credenciales de Demo
 
 | Rol | Email | Contraseña |

@@ -5,9 +5,9 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { ToastContainer } from "@/components/ui/toast"
 import { LoginPage } from "@/pages/Login"
 import { DashboardPage } from "@/pages/Dashboard"
-import { 
-  ProductsPage, 
-  LaboratoriesPage, 
+import {
+  ProductsPage,
+  LaboratoriesPage,
   CategoriesPage,
   FormasFarmaceuticasPage,
   UnidadesMedidaPage,
@@ -43,11 +43,15 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 function App() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, checkSession, isLoading } = useAuthStore()
   const [dbReady, setDbReady] = useState(isDatabaseReady())
   const initRef = useRef(false)
 
-  // Inicializar base de datos una sola vez
+  // Inicializar sesión y base de datos
+  useEffect(() => {
+    checkSession()
+  }, [checkSession])
+
   useEffect(() => {
     if (initRef.current) return
     initRef.current = true
@@ -60,17 +64,19 @@ function App() {
       }
       setDbReady(true)
     }
-    
+
     init()
   }, [])
 
-  // Mostrar pantalla de carga mientras se inicializa la base de datos
-  if (!dbReady) {
+  // Mostrar pantalla de carga mientras se inicializa la auth o la base de datos
+  if (isLoading || !dbReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Cargando datos desde Google Sheets...</p>
+          <p className="text-muted-foreground">
+            {isLoading ? 'Verificando sesión...' : 'Cargando datos...'}
+          </p>
         </div>
       </div>
     )

@@ -1,80 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, UserRole } from '@/types'
+import { supabase } from '@/lib/supabase'
 
 interface AuthStore {
   user: User | null
   isAuthenticated: boolean
   currentRdcId: string | null
-  
+  isLoading: boolean
+
   // Actions
-  login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
+  checkSession: () => Promise<void>
   setCurrentRdc: (rdcId: string) => void
   hasPermission: (permission: string) => boolean
   hasRole: (roles: UserRole | UserRole[]) => boolean
 }
 
-// Usuarios de demostración
-const DEMO_USERS: Record<string, User> = {
-  'admin@cedi.com': {
-    id: 'user-1',
-    email: 'admin@cedi.com',
-    name: 'Administrador CEDI',
-    role: 'superadmin',
-    is_active: true,
-    rdc_id: 'rdc-1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  'catalogo@cedi.com': {
-    id: 'user-2',
-    email: 'catalogo@cedi.com',
-    name: 'Admin Catálogo',
-    role: 'catalog-admin',
-    is_active: true,
-    rdc_id: 'rdc-1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  'citas@cedi.com': {
-    id: 'user-3',
-    email: 'citas@cedi.com',
-    name: 'Admin Citas',
-    role: 'scheduling-admin',
-    is_active: true,
-    rdc_id: 'rdc-1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  'proveedor@cedi.com': {
-    id: 'user-4',
-    email: 'proveedor@cedi.com',
-    name: 'Usuario Proveedor',
-    role: 'supplier-user',
-    is_active: true,
-    rdc_id: 'rdc-1',
-    supplier_id: 'supplier-1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  'seguridad@cedi.com': {
-    id: 'user-5',
-    email: 'seguridad@cedi.com',
-    name: 'Guardia de Seguridad',
-    role: 'security',
-    is_active: true,
-    rdc_id: 'rdc-1',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-}
-
 // Permisos por rol
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  superadmin: ['*'],  // Todo
+  superadmin: ['*'],
   admin: [
-    'catalog.*', 'scheduling.*', 'suppliers.*', 
+    'catalog.*', 'scheduling.*', 'suppliers.*',
     'users.read', 'users.update', 'reports.*', 'config.*'
   ],
   'scheduling-admin': [
@@ -101,31 +49,82 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isAuthenticated: false,
       currentRdcId: null,
+      isLoading: true,
 
-      login: async (email: string, password: string) => {
-        // Simulación de login - En producción, esto conectaría a la BD
-        const normalizedEmail = email.toLowerCase().trim()
-        
-        // Contraseña demo: "cedi2024"
-        if (password !== 'cedi2024') {
-          return false
+      checkSession: async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+
+          if (session?.user) {
+            // Map Supabase user to App user
+            const user: User = {
+              id: session.user.id,
+              email: session.user.email!,
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario',
+              role: (session.user.user_metadata?.role as UserRole) || 'supplier-user',
+              is_active: true,
+              rdc_id: session.user.user_metadata?.rdc_id || 'rdc-1', // Default or from meta
+              supplier_id: session.user.user_metadata?.supplier_id,
+              created_at: session.user.created_at,
+              updated_at: session.user.updated_at || new Date().toISOString()
+            }
+
+            set({
+              user,
+              isAuthenticated: true,
+              currentRdcId: user.rdc_id
+            })
+          } else {
+            set({ user: null, isAuthenticated: false, currentRdcId: null })
+          }
+        } catch (error) {
+          console.error('Error checking session:', error)
+          set({ user: null, isAuthenticated: false })
+        } finally {
+          set({ isLoading: false })
         }
-
-        const user = DEMO_USERS[normalizedEmail]
-        if (!user) {
-          return false
-        }
-
-        set({
-          user,
-          isAuthenticated: true,
-          currentRdcId: user.rdc_id,
-        })
-
-        return true
       },
 
-      logout: () => {
+      login: async (email, password) => {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+
+          if (error) {
+            return { success: false, error: error.message }
+          }
+
+          if (data.session?.user) {
+            const user: User = {
+              id: data.session.user.id,
+              email: data.session.user.email!,
+              name: data.session.user.user_metadata?.name || email.split('@')[0],
+              role: (data.session.user.user_metadata?.role as UserRole) || 'supplier-user',
+              is_active: true,
+              rdc_id: data.session.user.user_metadata?.rdc_id || 'rdc-1',
+              supplier_id: data.session.user.user_metadata?.supplier_id,
+              created_at: data.session.user.created_at,
+              updated_at: data.session.user.updated_at || new Date().toISOString(),
+            }
+
+            set({
+              user,
+              isAuthenticated: true,
+              currentRdcId: user.rdc_id,
+            })
+            return { success: true }
+          }
+
+          return { success: false, error: 'No se pudo obtener la sesión' }
+        } catch (error) {
+          return { success: false, error: 'Error inesperado al iniciar sesión' }
+        }
+      },
+
+      logout: async () => {
+        await supabase.auth.signOut()
         set({
           user: null,
           isAuthenticated: false,
@@ -141,13 +140,11 @@ export const useAuthStore = create<AuthStore>()(
         const { user } = get()
         if (!user) return false
 
-        const permissions = ROLE_PERMISSIONS[user.role]
+        const permissions = ROLE_PERMISSIONS[user.role] || []
         if (permissions.includes('*')) return true
 
-        // Verificar permiso exacto
         if (permissions.includes(permission)) return true
 
-        // Verificar permisos con wildcard (ej: 'catalog.*')
         const [module] = permission.split('.')
         if (permissions.includes(`${module}.*`)) return true
 
@@ -172,5 +169,3 @@ export const useAuthStore = create<AuthStore>()(
     }
   )
 )
-
-
