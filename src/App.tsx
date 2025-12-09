@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom"
 import { useEffect, useState, useRef } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { ToastContainer } from "@/components/ui/toast"
 import { LoginPage } from "@/pages/Login"
 import { DashboardPage } from "@/pages/Dashboard"
@@ -91,51 +92,75 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<MainLayout />}>
-          {/* Dashboard */}
+          {/* Dashboard - Accessible to all authenticated users */}
           <Route path="/" element={<DashboardPage />} />
 
-          {/* Perfil de Usuario */}
+          {/* Perfil de Usuario - Accessible to all */}
           <Route path="/perfil" element={<ProfilePage />} />
 
           {/* Catálogo */}
-          <Route path="/catalogo/productos" element={<ProductsPage />} />
-          <Route path="/catalogo/productos-nuevos" element={<NewProductWizardPage />} />
-          <Route path="/catalogo/laboratorios" element={<LaboratoriesPage />} />
-          <Route path="/catalogo/categorias" element={<CategoriesPage />} />
-          <Route path="/catalogo/formas" element={<FormasFarmaceuticasPage />} />
-          <Route path="/catalogo/unidades" element={<UnidadesMedidaPage />} />
-          <Route path="/catalogo/empaques" element={<TiposEmpaquePage />} />
-          <Route path="/catalogo/impuestos" element={<ImpuestosPage />} />
-          <Route path="/catalogo/monedas" element={<MonedasPage />} />
-          <Route path="/catalogo/niveles" element={<NivelesProductoPage />} />
-          <Route path="/catalogo/principios" element={<PrincipiosActivosPage />} />
-          <Route path="/catalogo/clasificaciones" element={<ClasificacionesPage />} />
-          <Route path="/catalogo/compradores" element={<BuyersPage />} />
+          <Route element={<ProtectedRoute permission="catalog.read" />}>
+            <Route path="/catalogo/productos" element={<ProductsPage />} />
+            <Route path="/catalogo/laboratorios" element={<LaboratoriesPage />} />
+            <Route path="/catalogo/categorias" element={<CategoriesPage />} />
+            <Route path="/catalogo/formas" element={<FormasFarmaceuticasPage />} />
+            <Route path="/catalogo/unidades" element={<UnidadesMedidaPage />} />
+            <Route path="/catalogo/empaques" element={<TiposEmpaquePage />} />
+            <Route path="/catalogo/impuestos" element={<ImpuestosPage />} />
+            <Route path="/catalogo/monedas" element={<MonedasPage />} />
+            <Route path="/catalogo/niveles" element={<NivelesProductoPage />} />
+            <Route path="/catalogo/principios" element={<PrincipiosActivosPage />} />
+            <Route path="/catalogo/clasificaciones" element={<ClasificacionesPage />} />
+            <Route path="/catalogo/compradores" element={<BuyersPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute permission="catalog.create" />}>
+            <Route path="/catalogo/productos-nuevos" element={<NewProductWizardPage />} />
+          </Route>
 
           {/* Citas/Scheduling */}
-          <Route path="/citas" element={<AppointmentsPage />} />
-          <Route path="/citas/nueva" element={<AppointmentsPage />} />
+          <Route element={<ProtectedRoute permission="scheduling.read" />}>
+            <Route path="/citas" element={<AppointmentsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute permission="scheduling.create" />}>
+            <Route path="/citas/nueva" element={<AppointmentsPage />} />
+          </Route>
 
           {/* Proveedores */}
-          <Route path="/proveedores" element={<SuppliersPage />} />
+          <Route element={<ProtectedRoute permission="suppliers.read" />}>
+            <Route path="/proveedores" element={<SuppliersPage />} />
+          </Route>
 
           {/* Configuración */}
-          <Route path="/config/rdc" element={<CentrosDistribucionPage />} />
-          <Route path="/config/puertas" element={<DocksPage />} />
-          <Route path="/config/vehiculos" element={<VehicleTypesPage />} />
-          <Route path="/config/horarios" element={<HorariosPage />} />
-          <Route path="/config/festivos" element={<DiasFestivosPage />} />
-          <Route path="/config/usuarios" element={<UsersPage />} />
-          <Route path="/config/conexion" element={<ConnectionTestPage />} />
+          <Route element={<ProtectedRoute permission="config.read" />}>
+            <Route path="/config/rdc" element={<CentrosDistribucionPage />} />
+            <Route path="/config/puertas" element={<DocksPage />} />
+            <Route path="/config/vehiculos" element={<VehicleTypesPage />} />
+            <Route path="/config/horarios" element={<HorariosPage />} />
+            <Route path="/config/festivos" element={<DiasFestivosPage />} />
+            <Route path="/config/conexion" element={<ConnectionTestPage />} />
+
+            {/* Usuarios requiere permiso específico */}
+            <Route element={<ProtectedRoute permission="users.read" />}>
+              <Route path="/config/usuarios" element={<UsersPage />} />
+            </Route>
+          </Route>
 
           {/* Seguridad */}
-          <Route path="/seguridad" element={<PlaceholderPage title="Módulo de Seguridad" />} />
+          <Route element={<ProtectedRoute permission="security.read" />}>
+            <Route path="/seguridad" element={<PlaceholderPage title="Módulo de Seguridad" />} />
+          </Route>
 
           {/* Reportes */}
-          <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
+          <Route element={<ProtectedRoute permission="reports.read" />}>
+            <Route path="/reportes" element={<PlaceholderPage title="Reportes" />} />
+          </Route>
 
           {/* Auditoría */}
-          <Route path="/auditoria" element={<AuditPage />} />
+          <Route element={<ProtectedRoute permission="audit.read" />}>
+            <Route path="/auditoria" element={<AuditPage />} />
+          </Route>
         </Route>
 
         {/* Catch all - redirect to dashboard or login */}

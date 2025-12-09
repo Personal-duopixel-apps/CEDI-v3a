@@ -232,10 +232,27 @@ const formFields: FormField[] = [
   },
 ]
 
+import { usePermission } from "@/hooks/usePermission"
+
 export function ProductsPage() {
+  const { can } = usePermission()
+
+  const permissions = {
+    create: can('catalog.create'),
+    read: can('catalog.read'),
+    update: can('catalog.update'),
+    delete: can('catalog.delete'),
+  }
+
+  // Configuración dinámica
+  const dynamicConfig: CRUDConfig = {
+    ...config,
+    permissions,
+  }
+
   return (
     <CRUDPage<Product>
-      config={config}
+      config={dynamicConfig}
       entityName="products"
       columns={columns}
       formFields={formFields}

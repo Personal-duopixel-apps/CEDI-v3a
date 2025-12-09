@@ -12,7 +12,6 @@ import {
   ChevronDown,
   Building2,
   FlaskConical,
-  Pill,
   Ruler,
   BoxIcon,
   Percent,
@@ -30,17 +29,18 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUIStore } from "@/store/ui.store"
-import { useAuthStore } from "@/store/auth.store"
-import type { UserRole } from "@/types"
+import { usePermission } from "@/hooks/usePermission"
 
 interface NavItem {
   label: string
   icon: React.ReactNode
-  href?: string
-  roles?: UserRole[]
+  href: string
+  permission?: string
   children?: NavItem[]
 }
 
+// Nota: Los hrefs padres de items con children no se usan para navegación directa, 
+// pero sirven para agrupar en la lógica de apertura del menú.
 const navigation: NavItem[] = [
   {
     label: "Dashboard",
@@ -50,9 +50,10 @@ const navigation: NavItem[] = [
   {
     label: "Catálogo",
     icon: <Package className="h-5 w-5" />,
-    roles: ["superadmin", "admin", "catalog-admin"],
+    href: "/catalogo",
+    permission: "catalog.read", // Requiere permiso de lectura en catálogo
     children: [
-      { label: "Productos Nuevos", icon: <PlusCircle className="h-4 w-4" />, href: "/catalogo/productos-nuevos" },
+      { label: "Productos Nuevos", icon: <PlusCircle className="h-4 w-4" />, href: "/catalogo/productos-nuevos", permission: "catalog.create" },
       { label: "Productos", icon: <Eye className="h-4 w-4" />, href: "/catalogo/productos" },
       { label: "Laboratorios", icon: <FlaskConical className="h-4 w-4" />, href: "/catalogo/laboratorios" },
       { label: "Categorías", icon: <Tag className="h-4 w-4" />, href: "/catalogo/categorias" },
@@ -70,15 +71,18 @@ const navigation: NavItem[] = [
   {
     label: "Citas",
     icon: <Calendar className="h-5 w-5" />,
+    href: "/citas",
+    permission: "scheduling.read",
     children: [
       { label: "Agenda de Citas", icon: <ClipboardList className="h-4 w-4" />, href: "/citas" },
-      { label: "Nueva Cita", icon: <Calendar className="h-4 w-4" />, href: "/citas/nueva" },
+      { label: "Nueva Cita", icon: <Calendar className="h-4 w-4" />, href: "/citas/nueva", permission: "scheduling.create" },
     ],
   },
   {
     label: "Proveedores",
     icon: <Truck className="h-5 w-5" />,
-    roles: ["superadmin", "admin", "scheduling-admin", "supplier-admin"],
+    href: "/proveedores",
+    permission: "suppliers.read",
     children: [
       { label: "Lista de Proveedores", icon: <Building2 className="h-4 w-4" />, href: "/proveedores" },
     ],
@@ -86,13 +90,14 @@ const navigation: NavItem[] = [
   {
     label: "Configuración",
     icon: <Settings className="h-5 w-5" />,
-    roles: ["superadmin", "admin"],
+    href: "/config",
+    permission: "config.read",
     children: [
       { label: "Centros de Distribución", icon: <Building2 className="h-4 w-4" />, href: "/config/rdc" },
       { label: "Puertas", icon: <DoorOpen className="h-4 w-4" />, href: "/config/puertas" },
       { label: "Tipos de Vehículo", icon: <Car className="h-4 w-4" />, href: "/config/vehiculos" },
       { label: "Horarios", icon: <Clock className="h-4 w-4" />, href: "/config/horarios" },
-      { label: "Usuarios", icon: <Users className="h-4 w-4" />, href: "/config/usuarios" },
+      { label: "Usuarios", icon: <Users className="h-4 w-4" />, href: "/config/usuarios", permission: "users.read" }, // Permiso específico
       { label: "Conexión BD", icon: <Database className="h-4 w-4" />, href: "/config/conexion" },
     ],
   },
@@ -100,25 +105,25 @@ const navigation: NavItem[] = [
     label: "Seguridad",
     icon: <ShieldCheck className="h-5 w-5" />,
     href: "/seguridad",
-    roles: ["superadmin", "admin", "security"],
+    permission: "security.read", // Seguridad solo ve esto
   },
   {
     label: "Reportes",
     icon: <FileText className="h-5 w-5" />,
     href: "/reportes",
-    roles: ["superadmin", "admin"],
+    permission: "reports.read",
   },
   {
     label: "Auditoría",
     icon: <History className="h-5 w-5" />,
     href: "/auditoria",
-    roles: ["superadmin", "admin"],
+    permission: "audit.read",
   },
 ]
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebarCollapse } = useUIStore()
-  const { user, hasRole } = useAuthStore()
+  const { can } = usePermission()
   const location = useLocation()
   const [openMenus, setOpenMenus] = React.useState<string[]>([])
 
@@ -133,22 +138,41 @@ export function Sidebar() {
   // Abrir menú si la ruta actual está en los hijos
   React.useEffect(() => {
     navigation.forEach(item => {
-      if (item.children?.some(child => location.pathname.startsWith(child.href || ""))) {
+      if (item.children?.some(child => location.pathname.startsWith(child.href))) {
         if (!openMenus.includes(item.label)) {
           setOpenMenus(prev => [...prev, item.label])
         }
       }
     })
-  }, [location.pathname])
+  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filterByRole = (items: NavItem[]): NavItem[] => {
-    return items.filter(item => {
-      if (!item.roles) return true
-      return hasRole(item.roles)
-    })
+  const filterByPermission = (items: NavItem[]): NavItem[] => {
+    return items.reduce<NavItem[]>((acc, item) => {
+      // 1. Verificar permiso del padre/item actual
+      if (item.permission && !can(item.permission)) {
+        return acc
+      }
+
+      // 2. Si tiene hijos, filtrar hijos también
+      if (item.children) {
+        const visibleChildren = filterByPermission(item.children)
+        // Si después de filtrar no queda ningún hijo, no mostrar el padre
+        if (visibleChildren.length === 0) {
+          return acc
+        }
+
+        // Retornar nuevo objeto para no mutar el original
+        acc.push({ ...item, children: visibleChildren })
+        return acc
+      }
+
+      // 3. Item sin hijos con permiso válido
+      acc.push(item)
+      return acc
+    }, [])
   }
 
-  const visibleNavigation = filterByRole(navigation)
+  const visibleNavigation = filterByPermission(navigation)
 
   return (
     <aside
@@ -221,7 +245,7 @@ export function Sidebar() {
                         {item.children.map((child) => (
                           <li key={child.label}>
                             <NavLink
-                              to={child.href!}
+                              to={child.href}
                               className={({ isActive }) =>
                                 cn(
                                   "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all",
@@ -244,7 +268,7 @@ export function Sidebar() {
               ) : (
                 // Link directo
                 <NavLink
-                  to={item.href!}
+                  to={item.href}
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
