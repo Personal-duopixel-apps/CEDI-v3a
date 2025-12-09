@@ -182,6 +182,35 @@ export function LoginPage() {
                   Iniciar Sesión
                 </Button>
               </form>
+
+              {/* Demo Credentials */}
+              <div className="mt-6 pt-6 border-t">
+                <p className="text-sm text-muted-foreground text-center mb-3">
+                  Credenciales de demostración:
+                </p>
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Admin:</span>
+                    <code className="text-primary">admin@cedi.com</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Catálogo:</span>
+                    <code className="text-primary">catalogo@cedi.com</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Citas:</span>
+                    <code className="text-primary">citas@cedi.com</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Proveedor:</span>
+                    <code className="text-primary">proveedor@cedi.com</code>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t">
+                    <span className="text-muted-foreground">Contraseña:</span>
+                    <code className="text-primary font-semibold">cedi2024</code>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
