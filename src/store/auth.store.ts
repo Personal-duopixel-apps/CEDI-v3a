@@ -41,7 +41,7 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'scheduling.read', 'scheduling.create', 'scheduling.update:own'
   ],
   security: [
-    'scheduling.read', 'appointments.checkin'
+    'scheduling.read', 'scheduling.appointments.checkin'
   ],
   guest: [],
 }
