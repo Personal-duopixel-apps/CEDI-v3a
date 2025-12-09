@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { Calendar, FileText, Barcode, Shield, Snowflake, Building2, Pill, Clock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,7 +20,7 @@ const SI_NO_OPTIONS = [
 
 export function Step4InformacionAdicional() {
   const { data, updateData, catalogs, catalogsLoading } = useWizard()
-  
+
   // Usar los catálogos del contexto
   const clasificaciones = catalogs.classifications
   const impuestos = catalogs.taxes

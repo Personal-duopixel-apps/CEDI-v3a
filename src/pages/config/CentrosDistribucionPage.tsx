@@ -63,41 +63,41 @@ const config: CRUDConfig = {
 
 // Columnas de la tabla (usando nombres mapeados)
 const columns: DataTableColumn<CentroDistribucion>[] = [
-  { 
-    key: "code" as keyof CentroDistribucion, 
-    label: "Código", 
+  {
+    key: "code" as keyof CentroDistribucion,
+    label: "Código",
     sortable: true,
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "name" as keyof CentroDistribucion, 
-    label: "Nombre", 
-    sortable: true 
+  {
+    key: "name" as keyof CentroDistribucion,
+    label: "Nombre",
+    sortable: true
   },
-  { 
-    key: "address" as keyof CentroDistribucion, 
+  {
+    key: "address" as keyof CentroDistribucion,
     label: "Dirección",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "city" as keyof CentroDistribucion, 
+  {
+    key: "city" as keyof CentroDistribucion,
     label: "Ciudad",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "country" as keyof CentroDistribucion, 
+  {
+    key: "country" as keyof CentroDistribucion,
     label: "País",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "timezone" as keyof CentroDistribucion, 
+  {
+    key: "timezone" as keyof CentroDistribucion,
     label: "Zona Horaria",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "phone" as keyof CentroDistribucion, 
+  {
+    key: "phone" as keyof CentroDistribucion,
     label: "Teléfono",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
   {
     key: "is_active" as keyof CentroDistribucion,
@@ -741,7 +741,7 @@ export function CentrosDistribucionPage() {
       formFields={formFields}
       formSchema={centroSchema}
       searchFields={["code", "name", "city", "country"] as (keyof CentroDistribucion)[]}
-      defaultValues={{ 
+      defaultValues={{
         is_active: true,
         country: "Guatemala",
         city: "Guatemala",

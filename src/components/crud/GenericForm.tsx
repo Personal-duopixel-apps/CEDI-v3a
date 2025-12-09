@@ -63,27 +63,29 @@ export function GenericForm<T extends FieldValues>({
   React.useEffect(() => {
     const loadDynamicOptions = async () => {
       const fieldsWithEntity = fields.filter(f => f.optionsEntity)
-      
+
       for (const field of fieldsWithEntity) {
         if (!field.optionsEntity) continue
-        
+
         try {
           // Siempre cargar opciones frescas para asegurar datos actualizados
           const items = await db.getAll<BaseEntity>(field.optionsEntity)
           const options = items.map(item => {
             // Usar el nombre como value (coincide con lo que se guarda en Google Sheets)
-            const name = String(item.name || item.Nombre || '')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const itemData = item as any
+            const name = String(itemData.name || itemData.Nombre || '')
             return {
               value: name,  // El valor guardado es el nombre, no el ID
               label: name
             }
           }).filter(opt => opt.value) // Filtrar opciones vacías
-          
+
           console.log(`📋 Opciones cargadas para ${field.name}:`, options)
-          
+
           // Guardar en cache
           optionsCache[field.optionsEntity] = options
-          
+
           setDynamicOptions(prev => ({
             ...prev,
             [field.name]: options
@@ -93,7 +95,7 @@ export function GenericForm<T extends FieldValues>({
         }
       }
     }
-    
+
     loadDynamicOptions()
   }, [fields])
 
@@ -109,7 +111,7 @@ export function GenericForm<T extends FieldValues>({
   if (loading) {
     return <FormSkeleton fields={fields.length} />
   }
-  
+
   // Combinar opciones estáticas y dinámicas
   const getFieldOptions = (field: FormField) => {
     // Si el campo depende de otro campo, usar getOptions con el valor del campo padre
@@ -120,7 +122,7 @@ export function GenericForm<T extends FieldValues>({
       }
       return []
     }
-    
+
     if (field.optionsEntity && dynamicOptions[field.name]) {
       return dynamicOptions[field.name]
     }
@@ -136,11 +138,11 @@ export function GenericForm<T extends FieldValues>({
       }
       return []
     }, [dependsOnValue, field])
-    
+
     const currentValue = form.watch(field.name as Path<T>) as string
     const error = form.formState.errors[field.name as Path<T>]?.message as string | undefined
     const isDisabled = disabled || field.disabled || !dependsOnValue
-    
+
     // Limpiar el valor si el padre cambia y el valor actual no está en las nuevas opciones
     React.useEffect(() => {
       if (currentValue && options.length > 0) {
@@ -150,7 +152,7 @@ export function GenericForm<T extends FieldValues>({
         }
       }
     }, [dependsOnValue, options, currentValue])
-    
+
     return (
       <div className={cn("space-y-2", field.className)}>
         <Label htmlFor={field.name} required={field.required}>

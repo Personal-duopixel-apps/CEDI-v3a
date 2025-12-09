@@ -4,12 +4,10 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
   History,
-  Filter,
-  Download,
-  User,
   FileEdit,
   Trash2,
   Plus,
+  Download,
   LogIn,
   LogOut,
   FileSpreadsheet,
@@ -25,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/services/database.service"
+
 import { exportToCSV } from "@/lib/utils"
 import type { AuditLog, AuditAction } from "@/types"
 
@@ -140,7 +138,7 @@ const demoLogs: Partial<AuditLog>[] = [
 ]
 
 export function AuditPage() {
-  const [logs, setLogs] = React.useState(demoLogs)
+  const [logs] = React.useState(demoLogs)
   const [actionFilter, setActionFilter] = React.useState<string>("all")
   const [entityFilter, setEntityFilter] = React.useState<string>("all")
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -168,7 +166,7 @@ export function AuditPage() {
     }))
     exportToCSV(
       exportData,
-      `auditoria_${new Date().toISOString().split("T")[0]}`,
+      `auditoria_${new Date().toISOString().split("T")[0]} `,
       [
         { key: "fecha", label: "Fecha" },
         { key: "usuario", label: "Usuario" },
@@ -283,7 +281,7 @@ export function AuditPage() {
                     className="flex items-start gap-4 p-4 hover:bg-muted/50 transition-colors"
                   >
                     {/* Icon */}
-                    <div className={`p-2 rounded-lg ${actionCfg.color}`}>
+                    <div className={`p - 2 rounded - lg ${actionCfg.color} `}>
                       {actionCfg.icon}
                     </div>
 

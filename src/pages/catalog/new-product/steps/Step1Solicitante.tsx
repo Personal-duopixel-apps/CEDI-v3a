@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { User, Building2, Phone, Mail, Calendar, UserCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,7 @@ import { useWizard } from "../WizardContext"
 
 export function Step1Solicitante() {
   const { data, updateData, catalogs, catalogsLoading } = useWizard()
-  
+
   // Usar los catálogos del contexto
   const buyers = catalogs.buyers
   const laboratories = catalogs.laboratories

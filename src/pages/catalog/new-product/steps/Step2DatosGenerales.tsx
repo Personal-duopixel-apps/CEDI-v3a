@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { Package, FileText, Pill, Hash, Scale, Box, Ruler, Tag } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,7 @@ import { useWizard } from "../WizardContext"
 
 export function Step2DatosGenerales() {
   const { data, updateData, generateProductName, catalogs, catalogsLoading } = useWizard()
-  
+
   // Usar los catálogos del contexto
   const formasFarmaceuticas = catalogs.pharmaceutical_forms
   const unidadesMedida = catalogs.measurement_units

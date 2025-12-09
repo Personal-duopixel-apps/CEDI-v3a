@@ -61,8 +61,8 @@ const config: CRUDConfig = {
 const columns: DataTableColumn<DiaFestivo>[] = [
   { key: "name", label: "Nombre", sortable: true },
   { key: "distribution_center_id", label: "Centro", sortable: true },
-  { key: "date", label: "Fecha", sortable: true, render: (value) => value || '-' },
-  { key: "notes", label: "Descripción", render: (value) => value || '-' },
+  { key: "date", label: "Fecha", sortable: true, render: (value) => value ? String(value) : '-' },
+  { key: "notes", label: "Descripción", render: (value) => value ? String(value) : '-' },
   {
     key: "is_working_day",
     label: "Día Laboral",
@@ -75,8 +75,8 @@ const columns: DataTableColumn<DiaFestivo>[] = [
       )
     },
   },
-  { key: "start_time", label: "Hora Inicio", render: (value) => value || '-' },
-  { key: "end_time", label: "Hora Fin", render: (value) => value || '-' },
+  { key: "start_time", label: "Hora Inicio", render: (value) => value ? String(value) : '-' },
+  { key: "end_time", label: "Hora Fin", render: (value) => value ? String(value) : '-' },
 ]
 
 // Campos del formulario - con relación a Centro de Distribución

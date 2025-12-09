@@ -55,26 +55,26 @@ const config: CRUDConfig = {
 
 // Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<UnidadMedida>[] = [
-  { 
-    key: "code", 
-    label: "Código", 
+  {
+    key: "code",
+    label: "Código",
     sortable: true,
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "name", 
-    label: "Nombre", 
-    sortable: true 
+  {
+    key: "name",
+    label: "Nombre",
+    sortable: true
   },
-  { 
-    key: "symbol", 
+  {
+    key: "symbol",
     label: "Abreviatura",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "description", 
+  {
+    key: "description",
     label: "Descripción",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
   {
     key: "is_active",

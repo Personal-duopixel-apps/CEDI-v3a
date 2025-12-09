@@ -5,7 +5,7 @@
  */
 
 import { databaseConfig } from '@/config/database.config'
-import { generateId } from '@/lib/utils'
+
 
 const { apiKey, spreadsheetId, sheetNames } = databaseConfig.googleSheets
 
@@ -34,16 +34,16 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Fecha Creación': 'created_at',
     'Fecha Actualización': 'updated_at',
   },
-  
+
   // Laboratorios
   laboratories: {
     'Información de Contacto': 'contact_info',
   },
-  
+
   // Formas Farmacéuticas (español e inglés)
   formas_farmaceuticas: {},
   pharmaceutical_forms: {},  // Alias en inglés
-  
+
   // Unidades de Medida (español e inglés)
   unidades_medida: {
     'Símbolo': 'symbol',
@@ -53,7 +53,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Símbolo': 'symbol',
     'Tipo': 'type',
   },
-  
+
   // Tipos de Empaque (español e inglés)
   tipos_empaque: {
     'Unidades por Empaque': 'units_per_pack',
@@ -61,7 +61,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
   package_types: {  // Alias en inglés
     'Unidades por Empaque': 'units_per_pack',
   },
-  
+
   // Impuestos (español e inglés)
   impuestos: {
     'Porcentaje': 'percentage',
@@ -71,7 +71,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Porcentaje': 'percentage',
     'Tasa': 'rate',
   },
-  
+
   // Monedas (español e inglés)
   monedas: {
     'Símbolo': 'symbol',
@@ -81,7 +81,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Símbolo': 'symbol',
     'Tasa de Cambio': 'exchange_rate',
   },
-  
+
   // Niveles de Producto (español e inglés)
   niveles_producto: {
     'Nivel': 'level',
@@ -91,7 +91,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Nivel': 'level',
     'ID Padre': 'parent_id',
   },
-  
+
   // Principios Activos (español e inglés)
   principios_activos: {
     'Concentración': 'concentration',
@@ -99,15 +99,15 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
   active_ingredients: {  // Alias en inglés
     'Concentración': 'concentration',
   },
-  
+
   // Clasificaciones (español e inglés)
   classifications: {},  // Alias en inglés
-  
+
   // Compradores
   buyers: {
     'Persona de Contacto': 'contact_person',
   },
-  
+
   // Proveedores
   suppliers: {
     'Razón Social': 'legal_name',
@@ -119,7 +119,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Teléfono': 'contact_phone',
     'Ciudad': 'city',
   },
-  
+
   // Productos
   products: {
     'ID Centro de Distribución': 'rdc_id',
@@ -152,7 +152,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Para Autoservicio': 'for_self_service',
     'Es Borrador': 'is_draft',
   },
-  
+
   // Citas - Columnas exactas de la hoja "citas"
   appointments: {
     'ID': 'id',
@@ -188,7 +188,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'fecha_transporte_completado': 'fecha_transporte_completado',
     'fecha_aprobacion': 'fecha_aprobacion',
   },
-  
+
   // Centros de Distribución
   centros_distribucion: {
     'Código': 'code',
@@ -199,7 +199,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Zona Horaria': 'timezone',
     'Activo': 'is_active',
   },
-  
+
   // Puertas - relacionadas a Centro de Distribución
   docks: {
     'ID centro distribucion': 'distribution_center_id',
@@ -209,7 +209,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Estado': 'status',
     'Descripción': 'notes',
   },
-  
+
   // Tipos de Vehículo - Hoja: "tipos vehiculo"
   vehicle_types: {
     'Código': 'code',
@@ -220,7 +220,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Peso (ton)': 'max_weight',
     'Activo': 'is_active',
   },
-  
+
   // Horarios - relacionados a Puertas y Centros de Distribución
   horarios: {
     'Nombre': 'name',
@@ -240,7 +240,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Descripción': 'notes',
     'Notas': 'notes',
   },
-  
+
   // Días Festivos - relacionados a Centro de Distribución
   dias_festivos: {
     'ID Centro de Distribución': 'distribution_center_id',
@@ -250,7 +250,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     'Hora de Inicio': 'start_time',
     'Hora de Fin': 'end_time',
   },
-  
+
   // Usuarios
   users: {
     'Nombres': 'name',
@@ -274,13 +274,13 @@ function normalizeColumnName(header: string, entity: string): string {
   if (entityMapping[header]) {
     return entityMapping[header]
   }
-  
+
   // Luego buscar en el mapeo global
   const globalMapping = COLUMN_MAPPINGS._global
   if (globalMapping[header]) {
     return globalMapping[header]
   }
-  
+
   // Si no hay mapeo, convertir a snake_case
   return header
     .toLowerCase()
@@ -305,7 +305,7 @@ async function sheetsRequest(
   options: RequestInit = {}
 ): Promise<unknown> {
   const url = `${SHEETS_API_BASE}/${spreadsheetId}${endpoint}?key=${apiKey}`
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -328,18 +328,18 @@ async function sheetsRequest(
  */
 function parseValue(value: unknown): unknown {
   if (value === '' || value === null || value === undefined) return ''
-  
+
   const strValue = String(value).trim()
-  
+
   // Booleanos - NO convertir números simples a booleanos
   if (strValue.toLowerCase() === 'true' || strValue.toLowerCase() === 'sí') return true
   if (strValue.toLowerCase() === 'false' || strValue.toLowerCase() === 'no') return false
-  
+
   // Números (pero no si es un string que parece ID o código)
   if (!isNaN(Number(strValue)) && strValue !== '' && !strValue.startsWith('0') || strValue === '0') {
     return Number(strValue)
   }
-  
+
   return strValue
 }
 
@@ -348,27 +348,27 @@ function parseValue(value: unknown): unknown {
  */
 export async function readSheet(entity: string): Promise<SheetRow[]> {
   const sheetName = getSheetName(entity)
-  
+
   try {
     const data = await sheetsRequest(`/values/${encodeURIComponent(sheetName)}`) as {
       values?: string[][]
     }
-    
+
     if (!data.values || data.values.length < 2) {
       return []
     }
 
     const [rawHeaders, ...rows] = data.values
-    
+
     // Normalizar headers
     const headers = rawHeaders.map(h => normalizeColumnName(h, entity))
-    
+
     return rows.map((row, rowIndex) => {
       const obj: SheetRow = {}
       headers.forEach((header, index) => {
         obj[header] = parseValue(row[index])
       })
-      
+
       // Agregar ID automático si no existe
       // Usar el campo 'id' existente, 'ID' mapeado, 'code' como fallback, o generar uno basado en el índice
       if (!obj.id && !obj.ID) {
@@ -378,7 +378,7 @@ export async function readSheet(entity: string): Promise<SheetRow[]> {
       } else if (obj.id) {
         obj.id = String(obj.id)
       }
-      
+
       return obj
     })
   } catch (error) {
@@ -407,9 +407,9 @@ export async function testConnection(): Promise<{
     const data = await sheetsRequest('') as {
       sheets?: Array<{ properties: { title: string } }>
     }
-    
+
     const sheets = data.sheets?.map(s => s.properties.title) || []
-    
+
     return {
       success: true,
       message: `Conexión exitosa! Se encontraron ${sheets.length} hojas.`,
@@ -435,7 +435,7 @@ export async function getSpreadsheetInfo(): Promise<{
     properties: { title: string }
     sheets: Array<{ properties: { title: string } }>
   }
-  
+
   return {
     title: data.properties.title,
     sheets: data.sheets.map(s => s.properties.title),
@@ -458,7 +458,7 @@ export async function loadSheetData(entity: string): Promise<{
     const data = await sheetsRequest(`/values/${encodeURIComponent(sheetName)}`) as {
       values?: string[][]
     }
-    
+
     if (!data.values || data.values.length === 0) {
       return {
         success: true,
@@ -469,16 +469,16 @@ export async function loadSheetData(entity: string): Promise<{
     }
 
     const [rawHeaders, ...rows] = data.values
-    
+
     // Normalizar headers
     const headers = rawHeaders.map(h => normalizeColumnName(h, entity))
-    
+
     const parsedRows = rows.map((row, rowIndex) => {
       const obj: SheetRow = {}
       headers.forEach((header, index) => {
         obj[header] = parseValue(row[index])
       })
-      
+
       // Agregar ID automático si no existe
       // Usar el campo 'id' existente, 'ID' mapeado, 'code' como fallback, o generar uno basado en el índice
       if (!obj.id && !obj.ID) {
@@ -488,7 +488,7 @@ export async function loadSheetData(entity: string): Promise<{
       } else if (obj.id) {
         obj.id = String(obj.id)
       }
-      
+
       return obj
     })
 

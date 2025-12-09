@@ -1,15 +1,9 @@
 import * as React from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { Plus, Download, FileSpreadsheet, FileText, RefreshCw } from "lucide-react"
+import { Plus } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -75,20 +69,20 @@ export function CRUDPage<T extends BaseEntity>({
           setData(items)
         })
         .catch(error => {
-          console.error(`Error cargando ${entityName}:`, error)
+          console.error(`Error cargando ${entityName}: `, error)
         })
         .finally(() => {
           setLoading(false)
         })
     } catch (error) {
-      console.error(`Error cargando ${entityName}:`, error)
+      console.error(`Error cargando ${entityName}: `, error)
       setLoading(false)
     }
   }, [entityName, currentRdcId])
 
   // Cargar datos solo una vez al montar
   const loadedRef = React.useRef(false)
-  
+
   React.useEffect(() => {
     if (loadedRef.current) return
     loadedRef.current = true
@@ -113,18 +107,18 @@ export function CRUDPage<T extends BaseEntity>({
 
   // Handlers
   const handleCreate = () => {
-    navigate(`?mode=new`)
+    navigate(`? mode = new `)
   }
 
   const handleView = (item: T) => {
-    navigate(`?mode=view`, { state: { id: item.id } })
+    navigate(`? mode = view`, { state: { id: item.id } })
     setSelectedItem(item)
     setModalMode("view")
     setIsModalOpen(true)
   }
 
   const handleEdit = (item: T) => {
-    navigate(`?mode=edit`, { state: { id: item.id } })
+    navigate(`? mode = edit`, { state: { id: item.id } })
     setSelectedItem(item)
     setModalMode("edit")
     setIsModalOpen(true)
@@ -155,8 +149,8 @@ export function CRUDPage<T extends BaseEntity>({
       handleCloseModal()
       loadData()
     } catch (error) {
-      const message = modalMode === "create" 
-        ? config.messages.create.error 
+      const message = modalMode === "create"
+        ? config.messages.create.error
         : config.messages.update.error
       toast.error(message, String(error))
     }
@@ -185,7 +179,7 @@ export function CRUDPage<T extends BaseEntity>({
       key: String(col.key),
       label: col.label,
     }))
-    exportToCSV(data as unknown as Record<string, unknown>[], `${entityName}_${new Date().toISOString().split('T')[0]}`, exportColumns)
+    exportToCSV(data as unknown as Record<string, unknown>[], `${entityName}_${new Date().toISOString().split('T')[0]} `, exportColumns)
     toast.success("Exportación completada", `${data.length} registros exportados a CSV`)
   }
 
@@ -205,9 +199,9 @@ export function CRUDPage<T extends BaseEntity>({
   }
 
   const getModalTitle = () => {
-    if (modalMode === "create") return `Nuevo ${config.labels.singular}`
-    if (modalMode === "edit") return `Editar ${config.labels.singular}`
-    return `Ver ${config.labels.singular}`
+    if (modalMode === "create") return `Nuevo ${config.labels.singular} `
+    if (modalMode === "edit") return `Editar ${config.labels.singular} `
+    return `Ver ${config.labels.singular} `
   }
 
   return (
@@ -258,10 +252,10 @@ export function CRUDPage<T extends BaseEntity>({
             <DialogTitle>{getModalTitle()}</DialogTitle>
             <DialogDescription>
               {modalMode === "view"
-                ? `Detalles del ${config.labels.singular.toLowerCase()}`
+                ? `Detalles del ${config.labels.singular.toLowerCase()} `
                 : modalMode === "create"
-                ? `Complete los datos para crear un nuevo ${config.labels.singular.toLowerCase()}`
-                : `Modifique los datos del ${config.labels.singular.toLowerCase()}`}
+                  ? `Complete los datos para crear un nuevo ${config.labels.singular.toLowerCase()} `
+                  : `Modifique los datos del ${config.labels.singular.toLowerCase()} `}
             </DialogDescription>
           </DialogHeader>
 

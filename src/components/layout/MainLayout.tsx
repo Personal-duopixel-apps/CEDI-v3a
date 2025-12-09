@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { Outlet, Navigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "./Sidebar"
@@ -20,7 +20,7 @@ export function MainLayout() {
     <div className="min-h-screen bg-background">
       <Sidebar />
       <Header />
-      
+
       <main
         className={cn(
           "min-h-[calc(100vh-4rem)] transition-all duration-300 p-6",

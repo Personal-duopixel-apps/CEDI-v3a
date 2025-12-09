@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { Plus, Trash2, FlaskConical } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,7 +16,7 @@ import type { PrincipioActivoItem } from "../types"
 
 export function Step3IngredientesActivos() {
   const { data, updateData, catalogs, catalogsLoading } = useWizard()
-  
+
   // Usar los catálogos del contexto
   const principiosActivos = catalogs.active_ingredients
   const unidadesMedida = catalogs.measurement_units

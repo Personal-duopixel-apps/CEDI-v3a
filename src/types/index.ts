@@ -209,6 +209,9 @@ export interface Dock extends BaseEntity {
   code: string
   name: string
   is_active: boolean
+  type?: string
+  capacity?: number | string
+  status?: string
   max_vehicle_height_m?: number
   max_vehicle_length_m?: number
   notes?: string

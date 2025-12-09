@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { DollarSign, Percent, Plus, Trash2, Gift, Tag } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +21,7 @@ const SI_NO_OPTIONS = [
 
 export function Step5DatosCompra() {
   const { data, updateData, catalogs, catalogsLoading } = useWizard()
-  
+
   // Usar los catálogos del contexto
   const monedas = catalogs.currencies
   const isLoading = catalogsLoading
@@ -38,7 +38,7 @@ export function Step5DatosCompra() {
 
   // Actualizar precio y recalcular margen
   const handlePrecioChange = (field: string, value: number, margenField: string) => {
-    updateData("datosCompra", { 
+    updateData("datosCompra", {
       [field]: value,
       [margenField]: calcularMargen(value, data.datosCompra.precioCompraConIva)
     })

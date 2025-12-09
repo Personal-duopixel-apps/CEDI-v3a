@@ -46,7 +46,7 @@ export function TransportDataPage() {
 
         // Buscar la cita por token
         const appointments = appointmentsData as unknown as Array<Record<string, unknown>>
-        const foundAppointment = appointments.find(apt => 
+        const foundAppointment = appointments.find(apt =>
           apt.token === token || apt.Token === token || apt.id === token || apt.ID === token
         )
 
@@ -57,7 +57,7 @@ export function TransportDataPage() {
 
         // Verificar estado de la cita
         const estado = String(foundAppointment.estado || foundAppointment.Estado || "pending_transport")
-        
+
         if (estado === "transport_completed" || estado === "approved" || estado === "completed") {
           setPageState("already_completed")
           return
@@ -76,9 +76,9 @@ export function TransportDataPage() {
         }
 
         setAppointment(mappedAppointment)
-        
+
         // Mapear tipos de vehículo
-        const tipos = (tiposData as Array<Record<string, unknown>>).map(t => ({
+        const tipos = (tiposData as unknown as Array<Record<string, unknown>>).map(t => ({
           id: String(t.id || t.code || ""),
           name: String(t.name || t.Nombre || ""),
         })).filter(t => t.name)
@@ -121,8 +121,8 @@ export function TransportDataPage() {
         "fecha_transporte_completado": new Date().toISOString(),
       }
 
-      await db.update("appointments", appointment.id, updateData)
-      
+      await db.update("appointments", appointment.id, updateData as any)
+
       setPageState("success")
     } catch (error) {
       console.error("Error guardando datos:", error)
@@ -157,7 +157,7 @@ export function TransportDataPage() {
               <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Cita No Encontrada</h1>
               <p className="text-gray-600 mb-6">
-                El enlace que utilizaste no es válido o ha expirado. 
+                El enlace que utilizaste no es válido o ha expirado.
                 Por favor, contacta al administrador para obtener un nuevo enlace.
               </p>
               <Button variant="outline" onClick={() => navigate("/")}>

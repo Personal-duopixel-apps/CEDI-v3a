@@ -1,5 +1,5 @@
-import * as React from "react"
-import { Ruler, Box, Package, Thermometer, Layers, Info } from "lucide-react"
+
+import { Ruler, Box, Thermometer, Layers, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,7 @@ export function Step6DatosLogisticos() {
 
   const handleChange = (field: string, value: string | number) => {
     updateData("datosLogisticos", { [field]: value })
-    
+
     // Recalcular volúmenes automáticamente
     if (["largoArticulo", "anchoArticulo", "altoArticulo"].includes(field)) {
       const largo = field === "largoArticulo" ? (value as number) : data.datosLogisticos.largoArticulo
@@ -38,7 +38,7 @@ export function Step6DatosLogisticos() {
       const alto = field === "altoArticulo" ? (value as number) : data.datosLogisticos.altoArticulo
       updateData("datosLogisticos", { volumenArticulo: largo * ancho * alto })
     }
-    
+
     if (["largoFardo", "anchoFardo", "altoFardo"].includes(field)) {
       const largo = field === "largoFardo" ? (value as number) : data.datosLogisticos.largoFardo
       const ancho = field === "anchoFardo" ? (value as number) : data.datosLogisticos.anchoFardo

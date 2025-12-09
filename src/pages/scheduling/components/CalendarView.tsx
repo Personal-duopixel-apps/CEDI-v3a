@@ -35,7 +35,7 @@ import {
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useSettingsStore, generateTimeSlots, formatTimeWithAmPm } from "@/store/settings.store"
@@ -118,9 +118,9 @@ export function CalendarView({
   appointments,
   puertas = [],
   horarios = [],
-  onAppointmentClick,
+
   onStatusChange,
-  onEditAppointment,
+  onEditAppointment = (appointment) => { console.log("Edit appointment", appointment) },
   onDeleteAppointment,
 }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
@@ -128,30 +128,30 @@ export function CalendarView({
   const [selectedAppointment, setSelectedAppointment] = React.useState<CalendarAppointment | null>(null)
   const [viewMode, setViewMode] = React.useState<"month" | "day">("month")
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
-  
+
   // Obtener información del usuario actual para verificar permisos
   const { user, hasRole } = useAuthStore()
-  
+
   // Verificar si el usuario es administrador
   const isAdmin = hasRole(['superadmin', 'admin', 'scheduling-admin'])
-  
+
   // Verificar si el usuario puede editar/eliminar una cita específica
   const canEditAppointment = (appointment: CalendarAppointment) => {
     // Los administradores pueden editar cualquier cita
     if (isAdmin) return true
-    
+
     // Los demás usuarios solo pueden editar sus propias citas
     // Comparamos por el nombre del proveedor o el email de contacto
     if (user?.supplier_id) {
       // Si el usuario tiene un supplier_id, verificar si la cita es de su proveedor
-      return appointment.proveedor_nombre === user.name || 
-             appointment.contacto_email === user.email
+      return appointment.proveedor_nombre === user.name ||
+        appointment.contacto_email === user.email
     }
-    
+
     return false
   }
-  
-  const canDeleteAppointment = (appointment: CalendarAppointment) => {
+
+  const canDeleteAppointment = (_appointment: CalendarAppointment) => {
     // Solo los administradores pueden eliminar citas
     return isAdmin
   }
@@ -191,7 +191,7 @@ export function CalendarView({
   const selectedDayAppointments = React.useMemo(() => {
     if (!selectedDate) return []
     const dateKey = format(selectedDate, "yyyy-MM-dd")
-    return (appointmentsByDate[dateKey] || []).sort((a, b) => 
+    return (appointmentsByDate[dateKey] || []).sort((a, b) =>
       a.hora_inicio.localeCompare(b.hora_inicio)
     )
   }, [selectedDate, appointmentsByDate])
@@ -216,17 +216,17 @@ export function CalendarView({
     // Filtrar horarios que aplican para el día seleccionado
     const horariosDelDia = horarios.filter(h => {
       // Verificar si el horario está INACTIVO
-      const isInactive = h.is_active === false || 
-                        h.is_active === 'FALSE' || 
-                        h.is_active === 'false' || 
-                        h.is_active === 'No' || 
-                        h.is_active === 'no' ||
-                        h.is_available === false || 
-                        h.is_available === 'FALSE' || 
-                        h.is_available === 'false' || 
-                        h.is_available === 'No' || 
-                        h.is_available === 'no'
-      
+      const isInactive = h.is_active === false ||
+        h.is_active === 'FALSE' ||
+        h.is_active === 'false' ||
+        h.is_active === 'No' ||
+        h.is_active === 'no' ||
+        h.is_available === false ||
+        h.is_available === 'FALSE' ||
+        h.is_available === 'false' ||
+        h.is_available === 'No' ||
+        h.is_available === 'no'
+
       if (isInactive) return false
 
       // Verificar si el día está incluido (campo days puede ser "lunes,martes,miércoles,jueves,viernes")
@@ -234,12 +234,12 @@ export function CalendarView({
         const diasHorario = h.days.toLowerCase().split(',').map(d => d.trim())
         return diasHorario.includes(selectedDayName)
       }
-      
+
       // Legacy: verificar campo day
       if (h.day) {
         return h.day.toLowerCase() === selectedDayName
       }
-      
+
       return true // Si no tiene días especificados, aplica todos los días
     })
 
@@ -307,29 +307,29 @@ export function CalendarView({
   // Función para obtener la cita en una celda específica (horario + puerta)
   const getAppointmentForCell = React.useCallback((timeSlot: string, puertaId: string, puertaName: string) => {
     if (!selectedDate) return null
-    
+
     const dateKey = format(selectedDate, "yyyy-MM-dd")
     const dayAppointments = appointmentsByDate[dateKey] || []
-    
+
     // Normalizar el horario para comparación
     const normalizedTimeSlot = timeSlot.split(':').slice(0, 2).join(':')
     const timeSlotHour = parseInt(normalizedTimeSlot.split(':')[0]).toString()
-    
+
     return dayAppointments.find(apt => {
       const aptHour = parseInt(apt.hora_inicio.split(':')[0]).toString()
       const aptTimeNormalized = apt.hora_inicio.split(':').slice(0, 2).join(':')
-      
+
       // Comparar por hora (ignorando minutos si son :00)
       const timeMatch = aptTimeNormalized === normalizedTimeSlot || aptHour === timeSlotHour
-      
+
       // Comparar por puerta (por ID o por nombre)
       // También comparar ignorando espacios y case
-      const puertaMatch = apt.puerta_nombre === puertaName || 
-                          apt.puerta_nombre === puertaId ||
-                          apt.puerta_nombre?.toLowerCase() === puertaName?.toLowerCase() ||
-                          apt.puerta_nombre?.toLowerCase().includes(puertaName?.toLowerCase()) ||
-                          puertaName?.toLowerCase().includes(apt.puerta_nombre?.toLowerCase())
-      
+      const puertaMatch = apt.puerta_nombre === puertaName ||
+        apt.puerta_nombre === puertaId ||
+        apt.puerta_nombre?.toLowerCase() === puertaName?.toLowerCase() ||
+        apt.puerta_nombre?.toLowerCase().includes(puertaName?.toLowerCase()) ||
+        puertaName?.toLowerCase().includes(apt.puerta_nombre?.toLowerCase())
+
       return timeMatch && puertaMatch
     })
   }, [selectedDate, appointmentsByDate])
@@ -340,18 +340,18 @@ export function CalendarView({
     setCurrentMonth(new Date())
     setSelectedDate(new Date())
   }
-  
+
   // Al hacer click en un día, cambiar a vista de día
   const handleDayClick = (day: Date) => {
     setSelectedDate(day)
     setViewMode("day")
   }
-  
+
   // Volver a la vista de mes
   const handleBackToMonth = () => {
     setViewMode("month")
   }
-  
+
   // Usar formatTimeWithAmPm del store para formatear hora
   const formatTimeDisplay = formatTimeWithAmPm
 
@@ -422,8 +422,8 @@ export function CalendarView({
                     </th>
                     {puertas.length > 0 ? (
                       puertas.map((puerta) => (
-                        <th 
-                          key={puerta.id} 
+                        <th
+                          key={puerta.id}
                           className="border-b border-r p-3 text-center font-semibold min-w-[180px]"
                         >
                           <div className="flex flex-col items-center gap-1">
@@ -446,7 +446,7 @@ export function CalendarView({
                 </thead>
                 <tbody>
                   {uniqueTimeSlots.map((timeSlot, rowIndex) => (
-                    <tr 
+                    <tr
                       key={timeSlot}
                       className={cn(
                         "transition-colors",
@@ -463,9 +463,9 @@ export function CalendarView({
                         puertas.map((puerta) => {
                           const appointment = getAppointmentForCell(timeSlot, puerta.id, puerta.name)
                           const status = appointment ? getStatusConfig(appointment.estado) : null
-                          
+
                           return (
-                            <td 
+                            <td
                               key={`${timeSlot}-${puerta.id}`}
                               className="border-r p-2 align-top"
                             >
@@ -661,22 +661,22 @@ export function CalendarView({
                   {!showDeleteConfirm && (
                     <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
                       {/* Botón Editar */}
-                      {canEditAppointment(selectedAppointment) && onEditAppointment && 
-                       selectedAppointment.estado !== "receiving_finished" && 
-                       selectedAppointment.estado !== "cancelled" && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            onEditAppointment(selectedAppointment)
-                            setSelectedAppointment(null)
-                          }}
-                          className="gap-2"
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Editar Cita
-                        </Button>
-                      )}
-                      
+                      {canEditAppointment(selectedAppointment) && onEditAppointment &&
+                        selectedAppointment.estado !== "receiving_finished" &&
+                        selectedAppointment.estado !== "cancelled" && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              onEditAppointment(selectedAppointment)
+                              setSelectedAppointment(null)
+                            }}
+                            className="gap-2"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Editar Cita
+                          </Button>
+                        )}
+
                       {/* Botón Eliminar - solo admins */}
                       {canDeleteAppointment(selectedAppointment) && onDeleteAppointment && (
                         <Button
@@ -917,7 +917,7 @@ export function CalendarView({
                       )}
                     </div>
                   )}
-                  
+
                   {/* Indicador de click para ver día */}
                   {dayAppointments.length > 0 && (
                     <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -928,7 +928,7 @@ export function CalendarView({
               )
             })}
           </div>
-          
+
           {/* Instrucción */}
           <p className="text-center text-sm text-muted-foreground mt-4">
             Haz clic en un día para ver la vista detallada con horarios y puertas
@@ -1053,22 +1053,22 @@ export function CalendarView({
                 {!showDeleteConfirm && (
                   <div className="mt-6 flex flex-wrap gap-2 border-t pt-4">
                     {/* Botón Editar - visible para admins o dueños de la cita */}
-                    {canEditAppointment(selectedAppointment) && onEditAppointment && 
-                     selectedAppointment.estado !== "receiving_finished" && 
-                     selectedAppointment.estado !== "cancelled" && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          onEditAppointment(selectedAppointment)
-                          setSelectedAppointment(null)
-                        }}
-                        className="gap-2"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Editar Cita
-                      </Button>
-                    )}
-                    
+                    {canEditAppointment(selectedAppointment) && onEditAppointment &&
+                      selectedAppointment.estado !== "receiving_finished" &&
+                      selectedAppointment.estado !== "cancelled" && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            onEditAppointment(selectedAppointment)
+                            setSelectedAppointment(null)
+                          }}
+                          className="gap-2"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Editar Cita
+                        </Button>
+                      )}
+
                     {/* Botón Eliminar - solo visible para administradores */}
                     {canDeleteAppointment(selectedAppointment) && onDeleteAppointment && (
                       <Button
@@ -1200,7 +1200,7 @@ export function CalendarView({
                     )}
                   </div>
                 )}
-              
+
               </div>
             </motion.div>
           </motion.div>

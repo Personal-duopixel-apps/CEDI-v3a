@@ -20,7 +20,7 @@ import { useToast } from "@/store/ui.store"
 import { BookingStep1 } from "./components/BookingStep1"
 import { BookingStep2Phase1, type AppointmentFormDataPhase1 } from "./components/BookingStep2Phase1"
 import { CalendarView, type CalendarAppointment } from "./components/CalendarView"
-import { generateTransportLink, generatePhase1EmailHTML, sendEmail } from "@/services/email.service"
+import { generateTransportLink, generatePhase1EmailHTML, generatePhase3EmailHTML, sendEmail } from "@/services/email.service"
 
 interface BookingSelection {
   centro: { id: string; name: string; city?: string } | null
@@ -35,7 +35,7 @@ export function AppointmentsPage() {
   const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
-  
+
   // Detectar si estamos en /citas/nueva para abrir el wizard directamente
   const isNewAppointmentRoute = location.pathname === "/citas/nueva"
   const [activeTab, setActiveTab] = React.useState(isNewAppointmentRoute ? "booking" : "calendar")
@@ -56,7 +56,7 @@ export function AppointmentsPage() {
   const [tiposVehiculo, setTiposVehiculo] = React.useState<Array<{ id: string; name: string }>>([])
   const [appointments, setAppointments] = React.useState<CalendarAppointment[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  
+
   // Estado para mostrar el enlace de transporte después de crear la cita
   const [createdAppointmentInfo, setCreatedAppointmentInfo] = React.useState<{
     token: string
@@ -181,12 +181,12 @@ export function AppointmentsPage() {
       const fechasSeleccionadas = bookingSelection.fechas && bookingSelection.fechas.length > 0
         ? bookingSelection.fechas
         : [bookingSelection.fecha || new Date()]
-      
+
       // Obtener todos los horarios seleccionados (usar array si existe, sino el horario único)
       const horariosSeleccionados = bookingSelection.horarios && bookingSelection.horarios.length > 0
         ? bookingSelection.horarios
         : [bookingSelection.horario || "08:00"]
-      
+
       const createdIds: string[] = []
       const newCalendarAppointments: CalendarAppointment[] = []
 
@@ -212,10 +212,10 @@ export function AppointmentsPage() {
             "tipo de vehiculo": "",
             "Nombre del conductor": "",
           }
-          
+
           // Guardar en base de datos (Google Sheets)
           const createdAppointment = await db.create("appointments", newAppointment as unknown as Record<string, unknown>)
-          const createdId = (createdAppointment as Record<string, unknown>)?.id as string || `temp-${Date.now()}-${format(fechaCita, "yyyyMMdd")}-${horario.replace(':', '')}`
+          const createdId = (createdAppointment as any)?.id as string || `temp-${Date.now()}-${format(fechaCita, "yyyyMMdd")}-${horario.replace(':', '')}`
           createdIds.push(createdId)
 
           // Datos adicionales para el estado local del calendario
@@ -238,7 +238,7 @@ export function AppointmentsPage() {
             contacto_email: formData.contacto_email,
             contacto_nombre: formData.contacto_nombre,
           }
-          
+
           newCalendarAppointments.push(appointmentForCalendar as CalendarAppointment)
         }
       }
@@ -254,11 +254,11 @@ export function AppointmentsPage() {
       const fechasTexto = fechasSeleccionadas.length > 1
         ? fechasSeleccionadas.map(f => format(f, "d MMM", { locale: es })).join(", ")
         : format(fechasSeleccionadas[0], "d 'de' MMMM 'de' yyyy", { locale: es })
-      
+
       const horariosTexto = horariosSeleccionados.length > 1
         ? horariosSeleccionados.join(", ")
         : horariosSeleccionados[0]
-      
+
       const totalCitas = fechasSeleccionadas.length * horariosSeleccionados.length
 
       // Intentar enviar email (en segundo plano, no bloquear)
@@ -303,8 +303,8 @@ export function AppointmentsPage() {
       })
 
       toast.success(
-        totalCitas > 1 ? `¡${totalCitas} Citas creadas!` : "¡Cita creada!", 
-        totalCitas > 1 
+        totalCitas > 1 ? `¡${totalCitas} Citas creadas!` : "¡Cita creada!",
+        totalCitas > 1
           ? `Se han programado ${totalCitas} citas (${fechasSeleccionadas.length} días × ${horariosSeleccionados.length} horarios)`
           : "La cita ha sido programada exitosamente"
       )
@@ -339,8 +339,8 @@ export function AppointmentsPage() {
   // Manejar cambio de estado de cita
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
-      const updateData: Record<string, unknown> = { 
-        "Estado": newStatus 
+      const updateData: Record<string, unknown> = {
+        "Estado": newStatus
       }
 
       // Si se está aprobando, generar código de cita
@@ -353,7 +353,7 @@ export function AppointmentsPage() {
         const appointment = appointments.find(apt => apt.id === appointmentId)
         if (appointment && appointment.contacto_email) {
           // Enviar email de confirmación (Fase 3)
-          const { generatePhase3EmailHTML } = await import("@/services/email.service")
+
           const emailHtml = generatePhase3EmailHTML({
             proveedorNombre: appointment.proveedor_nombre,
             fecha: appointment.fecha,
@@ -378,19 +378,19 @@ export function AppointmentsPage() {
         }
 
         // Actualizar estado local con el código
-        setAppointments(prev => 
-          prev.map(apt => 
-            apt.id === appointmentId 
-              ? { ...apt, estado: newStatus, codigo_cita: codigoCita } 
+        setAppointments(prev =>
+          prev.map(apt =>
+            apt.id === appointmentId
+              ? { ...apt, estado: newStatus, codigo_cita: codigoCita }
               : apt
           )
         )
-        
+
         toast.success("¡Cita Aprobada!", `Código generado: ${codigoCita}`)
       } else {
         // Actualizar estado local sin código
-        setAppointments(prev => 
-          prev.map(apt => 
+        setAppointments(prev =>
+          prev.map(apt =>
             apt.id === appointmentId ? { ...apt, estado: newStatus } : apt
           )
         )
@@ -413,7 +413,8 @@ export function AppointmentsPage() {
   }
 
   // Estado para edición de citas
-  const [editingAppointment, setEditingAppointment] = React.useState<CalendarAppointment | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [, setEditingAppointment] = React.useState<CalendarAppointment | null>(null)
 
   // Manejar edición de cita
   const handleEditAppointment = (appointment: CalendarAppointment) => {
@@ -421,14 +422,14 @@ export function AppointmentsPage() {
     // Abrir el wizard de edición con los datos de la cita
     // Por ahora, mostrar un toast indicando que la funcionalidad está en desarrollo
     toast.info(
-      "Editar Cita", 
+      "Editar Cita",
       `Editando cita ${appointment.numero_cita} para ${appointment.proveedor_nombre}`
     )
-    
+
     // Pre-cargar los datos en el booking selection para edición
     const centro = centros.find(c => c.name === appointment.centro_nombre)
     const puerta = puertas.find(p => p.name === appointment.puerta_nombre)
-    
+
     if (centro && puerta) {
       setBookingSelection({
         centro: { id: centro.id, name: centro.name, city: centro.city },
@@ -436,7 +437,7 @@ export function AppointmentsPage() {
         fecha: new Date(appointment.fecha),
         horario: appointment.hora_inicio,
       })
-      
+
       // Cambiar al tab de booking para editar
       handleTabChange("booking")
       setBookingStep(2) // Ir directamente al paso 2 para editar datos
@@ -448,10 +449,10 @@ export function AppointmentsPage() {
     try {
       // Eliminar de la base de datos
       await db.delete("appointments", appointmentId)
-      
+
       // Actualizar estado local
       setAppointments(prev => prev.filter(apt => apt.id !== appointmentId))
-      
+
       toast.success("Cita Eliminada", "La cita ha sido eliminada correctamente")
     } catch (error) {
       console.error("Error eliminando cita:", error)
@@ -511,86 +512,86 @@ export function AppointmentsPage() {
           </TabsList>
         </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-5">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
-                <Mail className="h-5 w-5" />
+        {/* Stats */}
+        <div className="grid gap-4 sm:grid-cols-5">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter(a => a.estado === "pending_transport").length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Pend. Transporte</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "pending_transport").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Pend. Transporte</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter(a => a.estado === "transport_completed").length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Listas p/Aprobar</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                <Calendar className="h-5 w-5" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+                  <CalendarDays className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter(a => a.estado === "approved" || a.estado === "receiving_started").length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">En Proceso</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "transport_completed").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Listas p/Aprobar</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter(a => ["complete", "receiving_finished"].includes(a.estado)).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Completadas</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-                <CalendarDays className="h-5 w-5" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {appointments.filter(a =>
+                      a.fecha === format(new Date(), "yyyy-MM-dd")
+                    ).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Hoy</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {appointments.filter(a => a.estado === "approved" || a.estado === "receiving_started").length}
-                </p>
-                <p className="text-sm text-muted-foreground">En Proceso</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {appointments.filter(a => ["complete", "receiving_finished"].includes(a.estado)).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Completadas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
-                <Calendar className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {appointments.filter(a => 
-                    a.fecha === format(new Date(), "yyyy-MM-dd")
-                  ).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Hoy</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Tab Contents */}
         <TabsContent value="calendar" className="mt-0">
@@ -623,7 +624,7 @@ export function AppointmentsPage() {
                       <CheckCircle className="h-10 w-10 text-green-600" />
                     </div>
                   </motion.div>
-                  
+
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Cita Creada Exitosamente!</h2>
                   <p className="text-gray-600 mb-6">
                     Se ha enviado un correo a <strong>{createdAppointmentInfo.email}</strong> con el enlace para completar los datos de transporte.
@@ -639,8 +640,8 @@ export function AppointmentsPage() {
                       <Button size="sm" variant="outline" onClick={copyTransportLink}>
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => window.open(createdAppointmentInfo.transportLink, "_blank")}
                       >

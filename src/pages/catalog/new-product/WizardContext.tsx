@@ -27,7 +27,7 @@ interface CatalogsCache {
 
 interface WizardContextType {
   data: ProductWizardData
-  updateData: <K extends keyof ProductWizardData>(
+  updateData: <K extends Exclude<keyof ProductWizardData, "nombreGenerado" | "esBorrador">>(
     section: K,
     values: Partial<ProductWizardData[K]>
   ) => void
@@ -134,7 +134,7 @@ export function WizardProvider({ children }: { children: React.ReactNode }) {
     loadAllCatalogs()
   }, [])
 
-  const updateData = React.useCallback(<K extends keyof ProductWizardData>(
+  const updateData = React.useCallback(<K extends Exclude<keyof ProductWizardData, "nombreGenerado" | "esBorrador">>(
     section: K,
     values: Partial<ProductWizardData[K]>
   ) => {

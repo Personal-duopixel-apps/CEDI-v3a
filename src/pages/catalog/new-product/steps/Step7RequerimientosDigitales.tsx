@@ -20,7 +20,7 @@ const PHYSICAL_REQUIREMENTS = [
 ]
 
 const ACCEPTED_FORMATS = ".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+// 10MB limit moved to centralized config if needed
 
 export function Step7RequerimientosDigitales() {
   const { data, updateData } = useWizard()
@@ -95,7 +95,7 @@ export function Step7RequerimientosDigitales() {
         <p className="text-center text-muted-foreground">
           Para completar el registro del producto, debe proporcionar los siguientes documentos
         </p>
-        
+
         {!hasRegistroSanitario && (
           <div className="flex items-center justify-center gap-2 text-red-600">
             <AlertCircle className="h-4 w-4" />

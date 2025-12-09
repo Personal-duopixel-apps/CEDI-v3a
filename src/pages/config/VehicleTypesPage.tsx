@@ -55,24 +55,24 @@ const config: CRUDConfig = {
 
 // Columnas de la tabla (nombres mapeados)
 const columns: DataTableColumn<VehicleType>[] = [
-  { 
-    key: "code", 
-    label: "Código", 
+  {
+    key: "code",
+    label: "Código",
     sortable: true,
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "name", 
-    label: "Nombre", 
-    sortable: true 
+  {
+    key: "name",
+    label: "Nombre",
+    sortable: true
   },
-  { 
-    key: "description", 
+  {
+    key: "description",
     label: "Descripción",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "max_weight", 
+  {
+    key: "max_weight",
     label: "Peso (ton)",
     render: (value) => value ? `${value} ton` : '-'
   },

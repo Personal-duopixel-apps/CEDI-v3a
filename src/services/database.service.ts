@@ -30,7 +30,7 @@ async function syncWithGoogleSheets(
   id?: string
 ): Promise<{ success: boolean; error?: string }> {
   const appsScriptUrl = databaseConfig.googleSheets.appsScriptUrl
-  
+
   if (!appsScriptUrl) {
     console.warn('⚠️ Apps Script URL no configurada, cambios solo en localStorage')
     return { success: true }
@@ -86,9 +86,9 @@ async function syncWithGoogleSheets(
     }
   } catch (error) {
     console.error('❌ Error sincronizando con Google Sheets:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Error desconocido' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
     }
   }
 }
@@ -99,58 +99,58 @@ const ENTITY_TO_SHEET: Record<string, string> = {
   // Usuarios y Seguridad
   users: 'usuarios',
   audit_logs: 'audit_logs',
-  
+
   // Catálogos (nombres en español e inglés apuntan a las mismas hojas)
   products: 'productos',
   laboratories: 'laboratorios',
-  
+
   // Clasificaciones
   categories: 'clasificaciones',
   classifications: 'clasificaciones',  // Alias en inglés
   drug_categories: 'clasificaciones',
-  
+
   // Formas Farmacéuticas
   formas_farmaceuticas: 'formas farmaceuticas',
   pharmaceutical_forms: 'formas farmaceuticas',  // Alias en inglés
-  
+
   // Unidades de Medida
   unidades_medida: 'unidades de medida',
   measurement_units: 'unidades de medida',  // Alias en inglés
-  
+
   // Tipos de Empaque
   tipos_empaque: 'tipos de empaque',
   package_types: 'tipos de empaque',  // Alias en inglés
-  
+
   // Impuestos
   impuestos: 'impuestos',
   taxes: 'impuestos',  // Alias en inglés
-  
+
   // Monedas
   monedas: 'monedas',
   currencies: 'monedas',  // Alias en inglés
-  
+
   // Niveles de Producto
   niveles_producto: 'niveles de producto',
   product_levels: 'niveles de producto',  // Alias en inglés
-  
+
   // Principios Activos
   principios_activos: 'principios activos',
   active_ingredients: 'principios activos',  // Alias en inglés
-  
+
   medidas_peso: 'medidas peso',
-  
+
   // Proveedores
   suppliers: 'proveedores',
   buyers: 'compradores',
   solicitantes: 'Solicitantes',
-  
+
   // Productos - Datos adicionales
   datos_logisticos: 'datos logisticos',
   datos_compra: 'datos compra',
   producto_ingredientes: 'producto ingredientes activos',
   producto_bonificaciones: 'producto bonificaciones',
   producto_categorias: 'producto categorias',
-  
+
   // Configuración
   centros_distribucion: 'centros distribucion',
   horarios_negocio: 'horarios negocio',
@@ -158,7 +158,7 @@ const ENTITY_TO_SHEET: Record<string, string> = {
   docks: 'puertas',
   horarios: 'horarios',
   dias_festivos: 'dias festivos',
-  
+
   // Citas
   appointments: 'citas',
   ordenes_compra: 'ordenes compra',
@@ -186,7 +186,7 @@ class DatabaseService {
   private async _doInitialize(): Promise<void> {
     if (databaseConfig.adapter === 'google-sheets') {
       console.log('🔄 Inicializando conexión con Google Sheets...')
-      
+
       try {
         // Solo cargar entidades esenciales al inicio para evitar límite de cuota
         // Las demás se cargarán bajo demanda
@@ -199,11 +199,11 @@ class DatabaseService {
           'vehicle_types',
           'appointments',
         ]
-        
+
         for (const entity of essentialEntities) {
           await this.loadFromGoogleSheets(entity)
         }
-        
+
         console.log('✅ Datos esenciales cargados desde Google Sheets')
         this.initialized = true
       } catch (error) {
@@ -231,10 +231,10 @@ class DatabaseService {
    */
   private async loadFromGoogleSheets(entity: string): Promise<void> {
     const key = `cedi_${entity}`
-    
+
     try {
       const result = await loadSheetData(entity)
-      
+
       if (result.success) {
         // Guardar en cache y localStorage - SIEMPRE actualizar con datos frescos de Google Sheets
         this.cache.set(key, result.data || [])
@@ -246,7 +246,7 @@ class DatabaseService {
         // Marcar como refrescado para evitar reintentos inmediatos
         this.lastRefresh.set(entity, Date.now())
         console.warn(`  ⚠️ Error cargando ${entity}:`, result.error)
-        
+
         // Si no hay datos en caché, inicializar vacío
         if (!this.cache.has(key)) {
           this.cache.set(key, [])
@@ -256,7 +256,7 @@ class DatabaseService {
       console.error(`  ❌ Error cargando ${entity}:`, error)
       // Marcar como refrescado para evitar reintentos inmediatos
       this.lastRefresh.set(entity, Date.now())
-      
+
       // Si no hay datos en caché, inicializar vacío
       if (!this.cache.has(key)) {
         this.cache.set(key, [])
@@ -316,7 +316,7 @@ class DatabaseService {
       })
       this.cache.clear()
       this.lastRefresh.clear()
-      
+
       // Recargar todo
       for (const entityName of Object.keys(ENTITY_TO_SHEET)) {
         await this.loadFromGoogleSheets(entityName)
@@ -349,13 +349,13 @@ class DatabaseService {
     }
 
     const data = this.getFromStorage<T>(entity)
-    
+
     let filtered = data
 
     // Filtrar por RDC (multi-tenant)
     // Solo filtra si el registro tiene rdc_id definido, permitiendo catálogos globales
     if (options?.rdcId) {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         !item.rdc_id || item.rdc_id === options.rdcId
       )
     }
@@ -381,6 +381,11 @@ class DatabaseService {
       filtered.sort((a, b) => {
         const aVal = (a as Record<string, unknown>)[options.sortBy!]
         const bVal = (b as Record<string, unknown>)[options.sortBy!]
+
+        // Handle undefined/null
+        if (aVal === undefined || aVal === null) return 1 * order
+        if (bVal === undefined || bVal === null) return -1 * order
+
         if (aVal < bVal) return -1 * order
         if (aVal > bVal) return 1 * order
         return 0
@@ -413,7 +418,7 @@ class DatabaseService {
     // Búsqueda global
     if (options.search && options.searchFields?.length) {
       const searchLower = options.search.toLowerCase()
-      data = data.filter(item => 
+      data = data.filter(item =>
         options.searchFields!.some(field => {
           const value = (item as Record<string, unknown>)[field]
           return String(value).toLowerCase().includes(searchLower)
@@ -452,7 +457,7 @@ class DatabaseService {
     await this.initialize()
     const data = this.getFromStorage<T>(entity)
     const now = new Date().toISOString()
-    
+
     const newItem = {
       ...item,
       id: generateId(),
@@ -488,12 +493,12 @@ class DatabaseService {
     await this.initialize()
     const data = this.getFromStorage<T>(entity)
     const index = data.findIndex(item => item.id === id)
-    
+
     if (index === -1) return null
 
     const oldItem = { ...data[index] }
     const now = new Date().toISOString()
-    
+
     data[index] = {
       ...data[index],
       ...updates,
@@ -527,7 +532,7 @@ class DatabaseService {
     await this.initialize()
     const data = this.getFromStorage<T>(entity)
     const index = data.findIndex(item => item.id === id)
-    
+
     if (index === -1) return false
 
     const deletedItem = data[index]
@@ -618,14 +623,14 @@ class DatabaseService {
       logs = logs.filter(l => l.action === options.action)
     }
     if (options?.from_date) {
-      logs = logs.filter(l => l.created_at >= options.from_date!)
+      logs = logs.filter(l => l.created_at && l.created_at >= options.from_date!)
     }
     if (options?.to_date) {
-      logs = logs.filter(l => l.created_at <= options.to_date!)
+      logs = logs.filter(l => l.created_at && l.created_at <= options.to_date!)
     }
 
     // Ordenar por fecha descendente
-    logs.sort((a, b) => b.created_at.localeCompare(a.created_at))
+    logs.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
 
     if (options?.limit) {
       logs = logs.slice(0, options.limit)
@@ -685,7 +690,7 @@ class DatabaseService {
   async getStats(): Promise<Record<string, number>> {
     await this.initialize()
     const stats: Record<string, number> = {}
-    
+
     for (const entity of Object.keys(ENTITY_TO_SHEET)) {
       const data = this.getFromStorage(entity)
       stats[entity] = data.length

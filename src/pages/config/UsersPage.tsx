@@ -85,20 +85,20 @@ const getRoleBadgeVariant = (role: string): "default" | "secondary" | "success" 
 
 // Columnas de la tabla
 const columns: DataTableColumn<User>[] = [
-  { 
-    key: "name", 
-    label: "Nombre", 
-    sortable: true 
+  {
+    key: "name",
+    label: "Nombre",
+    sortable: true
   },
-  { 
-    key: "username", 
-    label: "Usuario", 
-    sortable: true 
+  {
+    key: "username",
+    label: "Usuario",
+    sortable: true
   },
-  { 
-    key: "email", 
+  {
+    key: "email",
     label: "Email",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
   {
     key: "role",
@@ -113,15 +113,15 @@ const columns: DataTableColumn<User>[] = [
       )
     },
   },
-  { 
-    key: "supplier_id", 
+  {
+    key: "supplier_id",
     label: "Proveedor",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
-  { 
-    key: "phone", 
+  {
+    key: "phone",
     label: "Teléfono",
-    render: (value) => value || '-'
+    render: (value) => value ? String(value) : '-'
   },
   {
     key: "is_active",

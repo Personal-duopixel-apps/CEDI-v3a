@@ -1,14 +1,12 @@
 import * as React from "react"
 import { motion } from "framer-motion"
-import { format, isToday, parseISO } from "date-fns"
-import { es } from "date-fns/locale"
+import { format } from "date-fns"
 import {
   Package,
   Calendar,
   Truck,
   Clock,
   TrendingUp,
-  AlertTriangle,
   CheckCircle2,
   ArrowRight,
   Building2,
@@ -118,10 +116,10 @@ export function DashboardPage() {
         setTodayAppointments(todayAppts)
 
         // Calcular estadísticas
-        const inProgress = todayAppts.filter(a => 
+        const inProgress = todayAppts.filter(a =>
           a.estado === "receiving" || a.estado === "receiving_started"
         ).length
-        const completed = todayAppts.filter(a => 
+        const completed = todayAppts.filter(a =>
           a.estado === "complete" || a.estado === "receiving_finished"
         ).length
 
@@ -223,9 +221,9 @@ export function DashboardPage() {
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No hay citas programadas para hoy</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="mt-4"
                     onClick={() => navigate("/citas/nueva")}
                   >
@@ -278,7 +276,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-purple-100 text-purple-600">
                     <Clock className="h-4 w-4" />
@@ -290,7 +288,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
                     <CheckCircle2 className="h-4 w-4" />

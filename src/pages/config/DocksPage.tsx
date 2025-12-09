@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { z } from "zod"
 import { CRUDPage } from "@/components/crud/CRUDPage"
 import { Badge } from "@/components/ui/badge"
@@ -52,8 +52,8 @@ const columns: DataTableColumn<Dock>[] = [
   { key: "code", label: "Número", sortable: true },
   { key: "distribution_center_id", label: "Centro", sortable: true },
   { key: "type", label: "Tipo", sortable: true },
-  { 
-    key: "capacity", 
+  {
+    key: "capacity",
     label: "Capacidad",
     render: (value) => value ? String(value) : "-",
   },
@@ -64,7 +64,7 @@ const columns: DataTableColumn<Dock>[] = [
       const isActive = value === "OPERATIONAL" || value === "Activo"
       return (
         <Badge variant={isActive ? "success" : "secondary"}>
-          {value || "Sin estado"}
+          {String(value || "Sin estado")}
         </Badge>
       )
     },

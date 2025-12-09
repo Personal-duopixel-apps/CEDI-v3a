@@ -1,7 +1,5 @@
 import * as React from "react"
-import { z } from "zod"
 import { format, parseISO, isValid } from "date-fns"
-import { es } from "date-fns/locale"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,14 +31,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { DataTable, type DataTableColumn } from "@/components/crud/DataTable"
-import { 
-  Clock, 
-  Settings, 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Building2, 
-  DoorOpen, 
+import {
+  Clock,
+  Settings,
+  Plus,
+  Building2,
+  DoorOpen,
   CalendarDays,
   CalendarOff,
   AlertTriangle,
@@ -116,7 +112,7 @@ const generateTimeOptions = () => {
     const ampm = hour >= 12 ? 'PM' : 'AM'
     const hourStr = hour.toString()
     const displayHour = hour12.toString()
-    
+
     options.push({ value: `${hourStr}:00`, label: `${displayHour}:00 ${ampm}` })
     options.push({ value: `${hourStr}:30`, label: `${displayHour}:30 ${ampm}` })
   }
@@ -140,17 +136,17 @@ const formatTimeWithAmPm = (time: string | undefined): string => {
 export function HorariosPage() {
   const { timeInterval, setTimeInterval } = useSettingsStore()
   const toast = useToast()
-  
+
   // Estado general
   const [activeTab, setActiveTab] = React.useState("horarios")
   const [isLoading, setIsLoading] = React.useState(true)
-  
+
   // Datos
   const [horarios, setHorarios] = React.useState<Horario[]>([])
   const [excepciones, setExcepciones] = React.useState<Excepcion[]>([])
   const [centros, setCentros] = React.useState<Centro[]>([])
   const [puertas, setPuertas] = React.useState<Puerta[]>([])
-  
+
   // Diálogos
   const [isHorarioDialogOpen, setIsHorarioDialogOpen] = React.useState(false)
   const [isExcepcionDialogOpen, setIsExcepcionDialogOpen] = React.useState(false)
@@ -159,7 +155,7 @@ export function HorariosPage() {
   const [editingExcepcion, setEditingExcepcion] = React.useState<Excepcion | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null)
   const [deleteType, setDeleteType] = React.useState<"horario" | "excepcion">("horario")
-  
+
   // Formulario de Horario
   const [horarioForm, setHorarioForm] = React.useState({
     name: "",
@@ -172,7 +168,7 @@ export function HorariosPage() {
     inactive_message: "Cerrado",
     notes: "",
   })
-  
+
   // Formulario de Excepción
   const [excepcionForm, setExcepcionForm] = React.useState({
     name: "",
@@ -186,24 +182,24 @@ export function HorariosPage() {
     message: "",
     is_recurring: false,
   })
-  
+
   // Puertas filtradas por centro seleccionado
   const filteredPuertasHorario = React.useMemo(() => {
     if (!horarioForm.distribution_center_id) return []
-    return puertas.filter(p => 
+    return puertas.filter(p =>
       p.distribution_center_id === horarioForm.distribution_center_id ||
       p.distribution_center_id === centros.find(c => c.id === horarioForm.distribution_center_id)?.name
     )
   }, [horarioForm.distribution_center_id, puertas, centros])
-  
+
   const filteredPuertasExcepcion = React.useMemo(() => {
     if (!excepcionForm.distribution_center_id) return []
-    return puertas.filter(p => 
+    return puertas.filter(p =>
       p.distribution_center_id === excepcionForm.distribution_center_id ||
       p.distribution_center_id === centros.find(c => c.id === excepcionForm.distribution_center_id)?.name
     )
   }, [excepcionForm.distribution_center_id, puertas, centros])
-  
+
   // Cargar datos
   React.useEffect(() => {
     async function loadData() {
@@ -228,14 +224,14 @@ export function HorariosPage() {
     }
     loadData()
   }, [])
-  
+
   // Helpers
   const getCentroName = (centroId: string | undefined) => {
     if (!centroId) return '-'
     const centro = centros.find(c => c.id === centroId || c.name === centroId)
     return centro?.name || centroId
   }
-  
+
   const getPuertasNames = (dockIds: string | undefined) => {
     if (!dockIds) return '-'
     const ids = dockIds.split(',').map(id => id.trim())
@@ -245,16 +241,16 @@ export function HorariosPage() {
     })
     return names.join(', ')
   }
-  
+
   const getDaysDisplay = (days: string | undefined) => {
     if (!days) return '-'
     const daysList = days.split(',').map(d => d.trim().toLowerCase())
-    
+
     // Verificar patrones comunes
     const weekdays = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes']
     const weekend = ['sábado', 'domingo']
     const allDays = [...weekdays, ...weekend]
-    
+
     if (weekdays.every(d => daysList.includes(d)) && !weekend.some(d => daysList.includes(d))) {
       return 'Lunes a Viernes'
     }
@@ -264,21 +260,21 @@ export function HorariosPage() {
     if (allDays.every(d => daysList.includes(d))) {
       return 'Todos los días'
     }
-    
+
     // Mostrar días individuales con letras cortas
     return daysList.map(d => {
       const day = DAYS_OF_WEEK.find(dw => dw.value === d)
       return day?.short || d.charAt(0).toUpperCase()
     }).join(', ')
   }
-  
+
   // ==================== HORARIOS ====================
-  
+
   const columnsHorarios: DataTableColumn<Horario>[] = [
     { key: "name", label: "Nombre", sortable: true },
-    { 
-      key: "distribution_center_id", 
-      label: "Centro", 
+    {
+      key: "distribution_center_id",
+      label: "Centro",
       render: (value) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -286,9 +282,9 @@ export function HorariosPage() {
         </div>
       )
     },
-    { 
-      key: "dock_ids", 
-      label: "Puertas", 
+    {
+      key: "dock_ids",
+      label: "Puertas",
       render: (value) => {
         const names = getPuertasNames(value as string)
         const count = value ? (value as string).split(',').length : 0
@@ -302,16 +298,16 @@ export function HorariosPage() {
         )
       }
     },
-    { 
-      key: "days", 
-      label: "Días", 
+    {
+      key: "days",
+      label: "Días",
       render: (value) => (
         <Badge variant="outline">{getDaysDisplay(value as string)}</Badge>
       )
     },
-    { 
-      key: "start_time", 
-      label: "Horario", 
+    {
+      key: "start_time",
+      label: "Horario",
       render: (_, item) => (
         <span className="text-sm">
           {formatTimeWithAmPm(item.start_time)} - {formatTimeWithAmPm(item.end_time)}
@@ -321,7 +317,7 @@ export function HorariosPage() {
     {
       key: "is_active",
       label: "Estado",
-      render: (value, item) => {
+      render: (value, _item) => {
         const isActive = value === true || value === 'TRUE' || value === 'true' || value === 'Sí' || value === undefined
         return (
           <div className="flex items-center gap-2">
@@ -341,7 +337,7 @@ export function HorariosPage() {
       },
     },
   ]
-  
+
   const handleCreateHorario = () => {
     setEditingHorario(null)
     setHorarioForm({
@@ -357,71 +353,71 @@ export function HorariosPage() {
     })
     setIsHorarioDialogOpen(true)
   }
-  
+
   const handleEditHorario = (horario: Horario) => {
     console.log("📝 Editando horario:", horario)
     console.log("📝 distribution_center_id:", horario.distribution_center_id)
     console.log("📝 dock_ids (raw):", horario.dock_ids)
     console.log("📝 days:", horario.days)
     console.log("📝 Puertas disponibles:", puertas.map(p => ({ id: p.id, name: p.name })))
-    
+
     setEditingHorario(horario)
-    
+
     // Procesar dock_ids - puede venir como string separado por comas
     // Los valores pueden ser IDs o nombres de puertas
     let dockIds: string[] = []
     if (horario.dock_ids) {
       const rawDockIds = horario.dock_ids.split(',').map(id => id.trim())
       console.log("📝 dock_ids raw split:", rawDockIds)
-      
+
       // Convertir cada valor a ID de puerta
       dockIds = rawDockIds.map(rawId => {
         // Primero buscar por ID exacto
         let puerta = puertas.find(p => p.id === rawId)
-        
+
         // Si no se encuentra, buscar por nombre
         if (!puerta) {
           puerta = puertas.find(p => p.name === rawId || p.name.toLowerCase() === rawId.toLowerCase())
         }
-        
+
         // Si no se encuentra, buscar por nombre parcial (ej: "Puerta 1C" en "Puerta 1C - Recepción")
         if (!puerta) {
           puerta = puertas.find(p => p.name.includes(rawId) || rawId.includes(p.name))
         }
-        
+
         if (puerta) {
           console.log(`📝 Puerta encontrada: "${rawId}" -> ID: ${puerta.id}`)
           return puerta.id
         }
-        
+
         console.log(`📝 Puerta NO encontrada para: "${rawId}"`)
         return rawId // Devolver el valor original si no se encuentra
       })
     }
-    
+
     console.log("📝 dock_ids procesados:", dockIds)
-    
+
     // Procesar days - puede venir como string separado por comas
     let days: string[] = []
     if (horario.days) {
       days = horario.days.split(',').map(d => d.trim().toLowerCase())
     }
-    
+
     // Buscar el ID del centro de distribución
     // Puede venir como ID, como nombre, o como número
     let centroId = horario.distribution_center_id || ""
     console.log("📝 Buscando centro con valor:", centroId)
     console.log("📝 Centros disponibles:", centros.map(c => ({ id: c.id, name: c.name })))
-    
+
     if (centroId) {
       // Primero intentar buscar por ID exacto
       let centroEncontrado = centros.find(c => c.id === centroId)
-      
+
       // Si no se encuentra, buscar por nombre
       if (!centroEncontrado) {
         centroEncontrado = centros.find(c => c.name === centroId)
       }
-      
+
       // Si no se encuentra, intentar buscar por ID numérico (puede venir como "1" pero el ID ser diferente)
       if (!centroEncontrado) {
         const centroIndex = parseInt(centroId) - 1
@@ -429,7 +425,7 @@ export function HorariosPage() {
           centroEncontrado = centros[centroIndex]
         }
       }
-      
+
       if (centroEncontrado) {
         centroId = centroEncontrado.id
         console.log("📝 Centro encontrado:", centroEncontrado.name, "con ID:", centroId)
@@ -437,11 +433,11 @@ export function HorariosPage() {
         console.log("📝 Centro NO encontrado para valor:", centroId)
       }
     }
-    
+
     console.log("📝 centroId resuelto:", centroId)
     console.log("📝 dockIds procesados:", dockIds)
     console.log("📝 days procesados:", days)
-    
+
     setHorarioForm({
       name: horario.name || "",
       distribution_center_id: centroId,
@@ -455,7 +451,7 @@ export function HorariosPage() {
     })
     setIsHorarioDialogOpen(true)
   }
-  
+
   const handleCentroChangeHorario = (value: string) => {
     setHorarioForm(prev => ({
       ...prev,
@@ -463,7 +459,7 @@ export function HorariosPage() {
       dock_ids: [],
     }))
   }
-  
+
   const handleDayToggle = (day: string) => {
     setHorarioForm(prev => ({
       ...prev,
@@ -472,28 +468,28 @@ export function HorariosPage() {
         : [...prev.days, day]
     }))
   }
-  
+
   const handleSelectWeekdays = () => {
     setHorarioForm(prev => ({
       ...prev,
       days: ['lunes', 'martes', 'miércoles', 'jueves', 'viernes']
     }))
   }
-  
+
   const handleSelectWeekend = () => {
     setHorarioForm(prev => ({
       ...prev,
       days: ['sábado', 'domingo']
     }))
   }
-  
+
   const handleSelectAllDays = () => {
     setHorarioForm(prev => ({
       ...prev,
       days: DAYS_OF_WEEK.map(d => d.value)
     }))
   }
-  
+
   const handlePuertaToggleHorario = (puertaId: string) => {
     setHorarioForm(prev => ({
       ...prev,
@@ -502,35 +498,35 @@ export function HorariosPage() {
         : [...prev.dock_ids, puertaId]
     }))
   }
-  
+
   const handleSelectAllPuertasHorario = () => {
     setHorarioForm(prev => ({
       ...prev,
       dock_ids: filteredPuertasHorario.map(p => p.id)
     }))
   }
-  
+
   const handleSubmitHorario = async () => {
     if (!horarioForm.name || !horarioForm.distribution_center_id || horarioForm.dock_ids.length === 0 || horarioForm.days.length === 0) {
       toast.error("Error", "Complete todos los campos requeridos")
       return
     }
-    
+
     setIsSubmitting(true)
     try {
       // Obtener el nombre del centro para guardarlo también
       const centroSeleccionado = centros.find(c => c.id === horarioForm.distribution_center_id)
       const centroNombre = centroSeleccionado?.name || horarioForm.distribution_center_id
-      
+
       // Obtener los nombres de las puertas para guardarlos también
       const puertasNombres = horarioForm.dock_ids.map(id => {
         const puerta = puertas.find(p => p.id === id)
         return puerta?.name || id
       }).join(',')
-      
+
       // Guardar los IDs de las puertas (para uso interno) y los nombres (para visualización)
       const puertasIds = horarioForm.dock_ids.join(',')
-      
+
       const dataToSave = {
         name: horarioForm.name,
         distribution_center_id: horarioForm.distribution_center_id,
@@ -553,27 +549,27 @@ export function HorariosPage() {
         "Mensaje Inactivo": horarioForm.inactive_message,
         "Descripción": horarioForm.notes,
       }
-      
+
       console.log("💾 Puertas IDs a guardar:", puertasIds)
       console.log("💾 Puertas nombres (referencia):", puertasNombres)
-      
+
       console.log("💾 Guardando horario:", dataToSave)
-      
+
       if (editingHorario) {
-        await db.update("horarios", editingHorario.id, dataToSave)
-        setHorarios(prev => prev.map(h => 
-          h.id === editingHorario.id 
-            ? { ...h, ...dataToSave, dock_ids: horarioForm.dock_ids.join(','), days: horarioForm.days.join(',') } 
+        await db.update("horarios", editingHorario.id, dataToSave as any)
+        setHorarios(prev => prev.map(h =>
+          h.id === editingHorario.id
+            ? { ...h, ...dataToSave, dock_ids: horarioForm.dock_ids.join(','), days: horarioForm.days.join(',') }
             : h
         ))
         toast.success("Horario actualizado", "El horario se ha actualizado correctamente")
       } else {
-        const created = await db.create("horarios", dataToSave) as Horario | { id: string }
+        const created = await db.create("horarios", dataToSave as any) as Horario | { id: string }
         console.log("💾 Respuesta de creación:", created)
-        
+
         // Usar el ID devuelto por el servidor o generar uno temporal
         const newId = (created as { id: string })?.id || `temp-${Date.now()}`
-        
+
         // Crear el nuevo horario con los datos del formulario y el ID del servidor
         const newHorario: Horario = {
           id: newId,
@@ -587,7 +583,7 @@ export function HorariosPage() {
           inactive_message: horarioForm.inactive_message,
           notes: horarioForm.notes,
         }
-        
+
         // Agregar solo si no existe ya (evitar duplicados)
         setHorarios(prev => {
           const exists = prev.some(h => h.id === newId)
@@ -598,7 +594,7 @@ export function HorariosPage() {
         })
         toast.success("Horario creado", "El horario se ha creado correctamente")
       }
-      
+
       setIsHorarioDialogOpen(false)
     } catch (error) {
       console.error("Error guardando horario:", error)
@@ -607,14 +603,14 @@ export function HorariosPage() {
       setIsSubmitting(false)
     }
   }
-  
+
   // ==================== EXCEPCIONES ====================
-  
+
   const columnsExcepciones: DataTableColumn<Excepcion>[] = [
     { key: "name", label: "Nombre", sortable: true },
-    { 
-      key: "distribution_center_id", 
-      label: "Centro", 
+    {
+      key: "distribution_center_id",
+      label: "Centro",
       render: (value) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -622,9 +618,9 @@ export function HorariosPage() {
         </div>
       )
     },
-    { 
-      key: "date", 
-      label: "Fecha", 
+    {
+      key: "date",
+      label: "Fecha",
       render: (value, item) => {
         const dateStr = value as string
         const isRecurring = item.is_recurring === true || item.is_recurring === 'TRUE' || item.is_recurring === 'true'
@@ -639,9 +635,9 @@ export function HorariosPage() {
         )
       }
     },
-    { 
-      key: "exception_type", 
-      label: "Tipo", 
+    {
+      key: "exception_type",
+      label: "Tipo",
       render: (value) => {
         const type = value as string
         if (type === 'cerrado') {
@@ -660,17 +656,17 @@ export function HorariosPage() {
         )
       }
     },
-    { 
-      key: "message", 
-      label: "Mensaje", 
+    {
+      key: "message",
+      label: "Mensaje",
       render: (value) => (
         <span className="text-sm text-muted-foreground truncate max-w-[200px]" title={value as string}>
-          {value || '-'}
+          {String(value || '-')}
         </span>
       )
     },
   ]
-  
+
   const handleCreateExcepcion = () => {
     setEditingExcepcion(null)
     setExcepcionForm({
@@ -687,7 +683,7 @@ export function HorariosPage() {
     })
     setIsExcepcionDialogOpen(true)
   }
-  
+
   const handleEditExcepcion = (excepcion: Excepcion) => {
     setEditingExcepcion(excepcion)
     const dockIds = excepcion.dock_ids ? excepcion.dock_ids.split(',').map(id => id.trim()) : []
@@ -714,7 +710,7 @@ export function HorariosPage() {
     })
     setIsExcepcionDialogOpen(true)
   }
-  
+
   const handleCentroChangeExcepcion = (value: string) => {
     setExcepcionForm(prev => ({
       ...prev,
@@ -722,7 +718,7 @@ export function HorariosPage() {
       dock_ids: [],
     }))
   }
-  
+
   const handlePuertaToggleExcepcion = (puertaId: string) => {
     setExcepcionForm(prev => ({
       ...prev,
@@ -731,20 +727,20 @@ export function HorariosPage() {
         : [...prev.dock_ids, puertaId]
     }))
   }
-  
+
   const handleSelectAllPuertasExcepcion = () => {
     setExcepcionForm(prev => ({
       ...prev,
       dock_ids: filteredPuertasExcepcion.map(p => p.id)
     }))
   }
-  
+
   const handleSubmitExcepcion = async () => {
     if (!excepcionForm.name || !excepcionForm.distribution_center_id || !excepcionForm.date) {
       toast.error("Error", "Complete todos los campos requeridos")
       return
     }
-    
+
     setIsSubmitting(true)
     try {
       const dateStr = format(excepcionForm.date, "yyyy-MM-dd")
@@ -772,22 +768,22 @@ export function HorariosPage() {
         "Es Día Laboral": excepcionForm.exception_type === 'horario_especial' ? "Sí" : "No",
         "Descripción": excepcionForm.message,
       }
-      
+
       if (editingExcepcion) {
-        await db.update("dias_festivos", editingExcepcion.id, dataToSave)
-        setExcepciones(prev => prev.map(e => 
-          e.id === editingExcepcion.id 
-            ? { ...e, ...dataToSave, dock_ids: excepcionForm.dock_ids.join(','), date: dateStr } 
+        await db.update("dias_festivos", editingExcepcion.id, dataToSave as any)
+        setExcepciones(prev => prev.map(e =>
+          e.id === editingExcepcion.id
+            ? { ...e, ...dataToSave, dock_ids: excepcionForm.dock_ids.join(','), date: dateStr }
             : e
         ))
         toast.success("Excepción actualizada", "La excepción se ha actualizado correctamente")
       } else {
-        const created = await db.create("dias_festivos", dataToSave) as Excepcion | { id: string }
+        const created = await db.create("dias_festivos", dataToSave as any) as Excepcion | { id: string }
         console.log("💾 Respuesta de creación excepción:", created)
-        
+
         // Usar el ID devuelto por el servidor o generar uno temporal
         const newId = (created as { id: string })?.id || `temp-${Date.now()}`
-        
+
         // Crear la nueva excepción con los datos del formulario
         const newExcepcion: Excepcion = {
           id: newId,
@@ -802,7 +798,7 @@ export function HorariosPage() {
           message: excepcionForm.message,
           is_recurring: excepcionForm.is_recurring,
         }
-        
+
         // Agregar solo si no existe ya (evitar duplicados)
         setExcepciones(prev => {
           const exists = prev.some(e => e.id === newId)
@@ -813,7 +809,7 @@ export function HorariosPage() {
         })
         toast.success("Excepción creada", "La excepción se ha creado correctamente")
       }
-      
+
       setIsExcepcionDialogOpen(false)
     } catch (error) {
       console.error("Error guardando excepción:", error)
@@ -822,12 +818,12 @@ export function HorariosPage() {
       setIsSubmitting(false)
     }
   }
-  
+
   // ==================== ELIMINAR ====================
-  
+
   const handleDelete = async () => {
     if (!deleteConfirmId) return
-    
+
     try {
       if (deleteType === "horario") {
         await db.delete("horarios", deleteConfirmId)
@@ -844,7 +840,7 @@ export function HorariosPage() {
       toast.error("Error", "No se pudo eliminar el registro")
     }
   }
-  
+
   const handleIntervalChange = (checked: boolean) => {
     setTimeInterval(checked ? 30 : 60)
   }
@@ -875,8 +871,8 @@ export function HorariosPage() {
                   Mostrar horarios cada media hora
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  {timeInterval === 30 
-                    ? "Los horarios se muestran cada 30 minutos (6:00, 6:30, 7:00...)" 
+                  {timeInterval === 30
+                    ? "Los horarios se muestran cada 30 minutos (6:00, 6:30, 7:00...)"
                     : "Los horarios se muestran cada hora (6:00, 7:00, 8:00...)"}
                 </p>
               </div>
@@ -902,7 +898,7 @@ export function HorariosPage() {
             Excepciones
           </TabsTrigger>
         </TabsList>
-        
+
         {/* Tab Horarios */}
         <TabsContent value="horarios" className="mt-6">
           <Card>
@@ -943,7 +939,7 @@ export function HorariosPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Tab Excepciones */}
         <TabsContent value="excepciones" className="mt-6">
           <Card>
@@ -997,7 +993,7 @@ export function HorariosPage() {
               {editingHorario ? "Editar horario" : "Nuevo horario"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             {/* Nombre */}
             <div className="grid gap-2">
@@ -1009,7 +1005,7 @@ export function HorariosPage() {
                 placeholder="Ej: Horario Regular, Horario Matutino..."
               />
             </div>
-            
+
             {/* Centro de Distribución */}
             <div className="grid gap-2">
               <Label>Centro de Distribución *</Label>
@@ -1033,7 +1029,7 @@ export function HorariosPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Puertas */}
             {horarioForm.distribution_center_id && (
               <div className="grid gap-2">
@@ -1048,7 +1044,7 @@ export function HorariosPage() {
                     </Button>
                   </div>
                 </div>
-                
+
                 {filteredPuertasHorario.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
                     No hay puertas configuradas para este centro
@@ -1078,7 +1074,7 @@ export function HorariosPage() {
                 )}
               </div>
             )}
-            
+
             {/* Días de la semana */}
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
@@ -1095,7 +1091,7 @@ export function HorariosPage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-2 p-4 border rounded-lg">
                 {DAYS_OF_WEEK.map((day) => (
                   <Button
@@ -1111,7 +1107,7 @@ export function HorariosPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Horarios */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -1130,7 +1126,7 @@ export function HorariosPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label>Hora Fin *</Label>
                 <Select
@@ -1148,9 +1144,9 @@ export function HorariosPage() {
                 </Select>
               </div>
             </div>
-            
+
             <Separator />
-            
+
             {/* Estado activo/inactivo */}
             <div className="grid gap-4">
               <div className="flex items-center gap-3 p-4 rounded-lg border">
@@ -1164,13 +1160,13 @@ export function HorariosPage() {
                     Horario Activo
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    {horarioForm.is_active 
+                    {horarioForm.is_active
                       ? "Las puertas están disponibles para citas en este horario"
                       : "Las puertas aparecerán como no disponibles"}
                   </p>
                 </div>
               </div>
-              
+
               {!horarioForm.is_active && (
                 <div className="grid gap-2">
                   <Label>Mensaje cuando está inactivo</Label>
@@ -1185,7 +1181,7 @@ export function HorariosPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Notas */}
             <div className="grid gap-2">
               <Label>Notas</Label>
@@ -1197,7 +1193,7 @@ export function HorariosPage() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsHorarioDialogOpen(false)}>
               Cancelar
@@ -1220,7 +1216,7 @@ export function HorariosPage() {
               Días festivos, cierres especiales o modificaciones de horario
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             {/* Nombre */}
             <div className="grid gap-2">
@@ -1232,7 +1228,7 @@ export function HorariosPage() {
                 placeholder="Ej: Navidad, Año Nuevo, Mantenimiento..."
               />
             </div>
-            
+
             {/* Centro de Distribución */}
             <div className="grid gap-2">
               <Label>Centro de Distribución *</Label>
@@ -1255,7 +1251,7 @@ export function HorariosPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Puertas afectadas */}
             {excepcionForm.distribution_center_id && (
               <div className="grid gap-2">
@@ -1273,7 +1269,7 @@ export function HorariosPage() {
                 <p className="text-xs text-muted-foreground">
                   Deja vacío para aplicar a todas las puertas del centro
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-2 p-4 border rounded-lg max-h-[150px] overflow-y-auto">
                   {filteredPuertasExcepcion.map((puerta) => (
                     <div
@@ -1293,7 +1289,7 @@ export function HorariosPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Fecha */}
             <div className="grid gap-2">
               <Label>Fecha *</Label>
@@ -1307,7 +1303,7 @@ export function HorariosPage() {
                 className="w-full"
               />
             </div>
-            
+
             {/* Tipo de excepción */}
             <div className="grid gap-2">
               <Label>Tipo de Excepción *</Label>
@@ -1327,7 +1323,7 @@ export function HorariosPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Horario especial */}
             {excepcionForm.exception_type === 'horario_especial' && (
               <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
@@ -1347,7 +1343,7 @@ export function HorariosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="grid gap-2">
                   <Label>Hora Fin</Label>
                   <Select
@@ -1366,7 +1362,7 @@ export function HorariosPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Mensaje personalizado */}
             <div className="grid gap-2">
               <Label>Mensaje personalizado</Label>
@@ -1379,7 +1375,7 @@ export function HorariosPage() {
                 Este mensaje se mostrará en el calendario de citas
               </p>
             </div>
-            
+
             {/* Recurrente */}
             <div className="flex items-center gap-3 p-4 rounded-lg border">
               <Switch
@@ -1397,7 +1393,7 @@ export function HorariosPage() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsExcepcionDialogOpen(false)}>
               Cancelar
@@ -1418,7 +1414,7 @@ export function HorariosPage() {
               Confirmar Eliminación
             </DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas eliminar {deleteType === "horario" ? "este horario" : "esta excepción"}? 
+              ¿Estás seguro de que deseas eliminar {deleteType === "horario" ? "este horario" : "esta excepción"}?
               Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>

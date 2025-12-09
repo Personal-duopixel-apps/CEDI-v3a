@@ -1,4 +1,4 @@
-import * as React from "react"
+
 import { z } from "zod"
 import { CRUDPage } from "@/components/crud/CRUDPage"
 import { Badge } from "@/components/ui/badge"
