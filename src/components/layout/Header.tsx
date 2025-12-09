@@ -25,11 +25,13 @@ import { useUIStore } from "@/store/ui.store"
 import { useNotificationsStore, Notification } from "@/store/notifications.store"
 import { db } from "@/services/database.service"
 import { ROLE_LABELS } from "@/lib/constants"
+import { usePermission } from "@/hooks/usePermission"
 
 export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { can } = usePermission()
   const { theme, setTheme, sidebarCollapsed } = useUIStore()
   const {
     notifications,
@@ -379,10 +381,12 @@ export function Header() {
               <User className="mr-2 h-4 w-4" />
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/config/usuarios")} className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              Configuración
-            </DropdownMenuItem>
+            {can('config.read') && (
+              <DropdownMenuItem onClick={() => navigate("/config/rdc")} className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Configuración
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
