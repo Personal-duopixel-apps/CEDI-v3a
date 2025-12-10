@@ -163,6 +163,18 @@ export interface Product extends BaseEntity {
   is_active: boolean
   registration_number?: string  // Registro sanitario
   registration_expiry?: string
+
+  // Flags adicionales de negocio
+  is_hospital_use?: boolean
+  requires_retained_prescription?: boolean
+  is_chronic_use?: boolean
+  for_own_pharmacies?: boolean
+  for_independent_pharmacies?: boolean
+  for_institutional_use?: boolean
+  is_routed?: boolean
+  for_wholesale?: boolean
+  for_self_service?: boolean
+  is_draft?: boolean
 }
 
 // =====================================================

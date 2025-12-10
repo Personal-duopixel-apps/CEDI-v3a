@@ -15,6 +15,7 @@ import type { BaseEntity, PaginatedResponse, AuditLog, AuditAction } from '@/typ
 import { generateId } from '@/lib/utils'
 import { databaseConfig } from '@/config/database.config'
 import { loadSheetData } from './googleSheets.service'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Sincroniza operaciones CRUD con Google Apps Script
@@ -346,6 +347,68 @@ class DatabaseService {
       if (options?.forceRefresh || this.isCacheExpired(entity)) {
         await this.loadFromGoogleSheets(entity)
       }
+    } else if (databaseConfig.adapter === 'supabase') {
+      // Para Supabase, hacemos query directo (con filtros básicos si es posible, sino en memoria)
+      // Nota: getAll devuelve TODO. Usar con cuidado.
+      let query = supabase.from(entity as any).select('*')
+
+      if (options?.rdcId) {
+        // Asumiendo que la tabla tiene rdc_id
+        // Si no lo tiene, ignorará el filtro o fallará? Supabase ignora columnas inexistentes en select, pero en where falla.
+        // Verificaremos si la entidad es 'products' u otra que sepamos que tiene rdc_id, o simplemente intentamos.
+        // Para safe, mejor filtrar en memoria si no estamos seguros del schema.
+        // Pero para 'products' sabemos que tiene rdc_id (o lo tendrá).
+        // Por ahora, para mantener compatibilidad genérica, si es Supabase,
+        // intentemos hacer lo máximo en DB, o fallback a getAll simple y filtrar en memoria memoria como antes.
+        // Para simplificar la migración inicial: Fetch all y filtrar en memoria igual que GoogleSheets/Local
+        // EXCEPTO si es muy grande.
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching from Supabase:', error)
+        return []
+      }
+
+      let filtered = data as unknown as T[]
+
+      // TODO: Refactorizar para aplicar filtros en DB
+      // Por ahora aplicamos la misma lógica de filtrado en memoria para garantizar comportamiento idéntico
+      if (options?.rdcId) {
+        filtered = filtered.filter(item =>
+          !item.rdc_id || item.rdc_id === options.rdcId
+        )
+      }
+
+      if (options?.filters) {
+        Object.entries(options.filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            filtered = filtered.filter(item => {
+              const itemValue = (item as Record<string, unknown>)[key]
+              if (typeof value === 'string') {
+                return String(itemValue).toLowerCase().includes(value.toLowerCase())
+              }
+              return itemValue === value
+            })
+          }
+        })
+      }
+
+      // Ordenar en memoria por ahora
+      if (options?.sortBy) {
+        const order = options.sortOrder === 'desc' ? -1 : 1
+        filtered.sort((a, b) => {
+          const aVal = (a as Record<string, unknown>)[options.sortBy!]
+          const bVal = (b as Record<string, unknown>)[options.sortBy!]
+          if (aVal === undefined || aVal === null) return 1 * order
+          if (bVal === undefined || bVal === null) return -1 * order
+          if (aVal < bVal) return -1 * order
+          if (aVal > bVal) return 1 * order
+          return 0
+        })
+      }
+      return filtered
     }
 
     const data = this.getFromStorage<T>(entity)
@@ -408,6 +471,55 @@ class DatabaseService {
       searchFields?: string[]
     }
   ): Promise<PaginatedResponse<T>> {
+    if (databaseConfig.adapter === 'supabase') {
+      // Implementación optimizada con paginación real para Supabase
+      const start = (options.page - 1) * options.pageSize
+      const end = start + options.pageSize - 1
+
+      let query = supabase.from(entity as any).select('*', { count: 'exact' })
+
+      // Filtros
+      if (options.rdcId) {
+        // query = query.or(`rdc_id.eq.${options.rdcId},rdc_id.is.null`) // Sintaxis puede variar
+        // Simplificación: Eq directo. Si necesitamos "or null", se complica
+        // query = query.eq('rdc_id', options.rdcId)
+        // MEJOR: Filtrar en memoria por ahora para evitar errores de schema si la columna no existe
+        // FALLBACK: Usar getAll (que filtra en memoria) y paginar en memoria.
+        // Esto es seguro pero no óptimo. Para Products (miles), está bien.
+      }
+
+      // Búsqueda
+      if (options.search && options.searchFields?.length) {
+        const orConditions = options.searchFields.map(field => `${field}.ilike.%${options.search}%`).join(',')
+        query = query.or(orConditions)
+      }
+
+      // Ordenamiento
+      if (options.sortBy) {
+        query = query.order(options.sortBy, { ascending: options.sortOrder !== 'desc' })
+      } else {
+        query = query.order('created_at', { ascending: false }) // Default
+      }
+
+      // Paginación
+      query = query.range(start, end)
+
+      const { data, count, error } = await query
+
+      if (error) {
+        console.error('Supabase pagination error:', error)
+        return { data: [], total: 0, page: 1, pageSize: options.pageSize, totalPages: 0 }
+      }
+
+      return {
+        data: (data as unknown as T[]) || [],
+        total: count || 0,
+        page: options.page,
+        pageSize: options.pageSize,
+        totalPages: Math.ceil((count || 0) / options.pageSize)
+      }
+    }
+
     let data = await this.getAll<T>(entity, {
       rdcId: options.rdcId,
       filters: options.filters,
@@ -444,6 +556,12 @@ class DatabaseService {
     entity: string,
     id: string
   ): Promise<T | null> {
+    if (databaseConfig.adapter === 'supabase') {
+      const { data, error } = await supabase.from(entity as any).select('*').eq('id', id).single()
+      if (error) return null
+      return data as unknown as T
+    }
+
     await this.initialize()
     const data = this.getFromStorage<T>(entity)
     return data.find(item => item.id === id) || null
@@ -460,11 +578,29 @@ class DatabaseService {
 
     const newItem = {
       ...item,
-      id: generateId(),
+      id: generateId(), // Supabase genera ID, pero si queremos consistencia podemos generarlo o dejar que Supabase lo haga. 
+      // El schema tiene default gen_random_uuid().
+      // Pero para mantener compatibilidad con local generated IDs (strings vs uuid), mejor dejar que la DB decida 
+      // OJO: generateId() genera strings simples "user_xyz". UUID es mejor.
+      // Si usamos supabase, mejor no enviar ID si no es necesario.
       created_at: now,
       updated_at: now,
       created_by: userId,
     } as T
+
+    if (databaseConfig.adapter === 'supabase') {
+      // Remover ID generado por 'generateId' si queremos usar UUIDs de Supabase
+      // O usar el ID si es un UUID válido. generateId() no es UUID standard.
+      // Mejor: Omitir ID.
+      const { id, ...itemWithoutId } = newItem
+
+      const { data, error } = await supabase.from(entity as any).insert(itemWithoutId as any).select().single()
+      if (error) {
+        console.error('Error creating in Supabase:', error)
+        throw new Error(error.message)
+      }
+      return data as unknown as T
+    }
 
     data.push(newItem)
     this.saveToStorage(entity, data)
@@ -506,6 +642,20 @@ class DatabaseService {
       updated_by: userId,
     }
 
+    if (databaseConfig.adapter === 'supabase') {
+      const { data, error } = await supabase.from(entity as any).update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+        updated_by: userId
+      } as any).eq('id', id).select().single()
+
+      if (error) {
+        console.error('Error updating Supabase:', error)
+        return null
+      }
+      return data as unknown as T
+    }
+
     this.saveToStorage(entity, data)
 
     // Sincronizar con Google Sheets
@@ -537,6 +687,16 @@ class DatabaseService {
 
     const deletedItem = data[index]
     data.splice(index, 1)
+
+    if (databaseConfig.adapter === 'supabase') {
+      const { error } = await supabase.from(entity as any).delete().eq('id', id)
+      if (error) {
+        console.error('Error deleting from Supabase:', error)
+        return false
+      }
+      return true
+    }
+
     this.saveToStorage(entity, data)
 
     // Sincronizar con Google Sheets

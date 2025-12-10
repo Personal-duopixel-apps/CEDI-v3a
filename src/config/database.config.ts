@@ -18,7 +18,7 @@ export const databaseConfig = {
   // =====================================================
   // ADAPTADOR ACTIVO
   // =====================================================
-  adapter: 'google-sheets' as DatabaseAdapter,
+  adapter: 'supabase' as DatabaseAdapter,
 
   // =====================================================
   // GOOGLE SHEETS
@@ -26,14 +26,14 @@ export const databaseConfig = {
   googleSheets: {
     apiKey: 'AIzaSyD5TIf4NH5ZAaCD2QNJtv7kRKm8Cq5Zg4Y',
     spreadsheetId: '1E7UF4d9XLZf90dZ-2uNhJ1lxMDxD3qu4CZdsKdAsVVw',
-    
+
     // Nombres de las hojas (pestañas) - DEBEN COINCIDIR EXACTAMENTE con el Google Sheet
     // Incluye alias en inglés para las páginas que usan nombres en inglés
     sheetNames: {
       // Usuarios y Seguridad
       users: 'usuarios',
       audit_logs: 'audit_logs',
-      
+
       // Catálogos (nombres en español)
       products: 'productos',
       laboratories: 'laboratorios',
@@ -47,7 +47,7 @@ export const databaseConfig = {
       niveles_producto: 'niveles de producto',
       principios_activos: 'principios activos',
       medidas_peso: 'medidas peso',
-      
+
       // Catálogos (alias en inglés para las páginas)
       classifications: 'clasificaciones',
       pharmaceutical_forms: 'formas farmaceuticas',
@@ -57,19 +57,19 @@ export const databaseConfig = {
       currencies: 'monedas',
       product_levels: 'niveles de producto',
       active_ingredients: 'principios activos',
-      
+
       // Proveedores
       suppliers: 'proveedores',
       buyers: 'compradores',
       solicitantes: 'Solicitantes',
-      
+
       // Productos - Datos adicionales
       datos_logisticos: 'datos logisticos',
       datos_compra: 'datos compra',
       producto_ingredientes: 'producto ingredientes activos',
       producto_bonificaciones: 'producto bonificaciones',
       producto_categorias: 'producto categorias',
-      
+
       // Configuración
       centros_distribucion: 'centros distribucion',
       horarios_negocio: 'horarios negocio',
@@ -77,7 +77,7 @@ export const databaseConfig = {
       docks: 'puertas',
       horarios: 'horarios',
       dias_festivos: 'dias festivos',
-      
+
       // Citas
       appointments: 'citas',
       ordenes_compra: 'ordenes compra',

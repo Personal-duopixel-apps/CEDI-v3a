@@ -87,6 +87,56 @@ Supabase mantiene una tabla especial llamada `supabase_migrations.schema_migrati
 
 # Aplicar migraciones al proyecto remoto
 npx supabase db push
+
+### Revertir Migraciones (Rollback)
+Si necesitas deshacer migraciones recientes:
+
+```bash
+# Revertir la última migración aplicada en local (baja 1 versión)
+
+# Revertir la última migración aplicada en local (baja 1 versión)
+npx supabase migration down
+
+# Revertir las últimas N migraciones
+npx supabase migration down --last 2
+
+# [PELIGRO] Revertir en proyecto REMOTO (Producción/Staging)
+# Esto revertirá la migración en la base de datos vinculada.
+# Úsalo con extrema precaución ya que puede borrar datos.
+npx supabase migration down --linked
+```
+```
+
+### Gestión de Semillas (Seeds)
+Supabase carga automáticamente el archivo `supabase/seeds.sql` cuando reinicias la base de datos localmente.
+
+```bash
+# Resetear base de datos local y aplicar seeds (Borra datos existentes)
+npx supabase db reset
+```
+
+Para aplicar seeds específicos (como `products.sql`) o en un proyecto remoto:
+1.  **Opción A (SQL Editor)**: Copia el contenido del archivo `.sql` y ejecútalo en el Editor SQL de Supabase.
+2.  **Opción B (Concat y Pipe)**:
+    ```bash
+    # Local
+    cat supabase/seeds/products.sql | npx supabase db execute --local
+
+    # Remoto (requiere db url)
+    cat supabase/seeds/products.sql | npx supabase db execute --project-ref <page-id>
+    ```
+
+### Generación de Tipos TypeScript
+
+#### Remoto (Producción/Staging)
+```bash
+npx supabase gen types typescript --project-id <project-id> > src/types/supabase.ts
+```
+
+#### Local (Desarrollo)
+Si estás trabajando localmente y aún no has subido cambios:
+```bash
+npx supabase gen types typescript --local > src/types/supabase.ts
 ```
 
 ### Funciones (Edge Functions)
